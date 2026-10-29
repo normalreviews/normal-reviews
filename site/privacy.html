@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Normal Reviews Privacy</title>
+<style>
+:root{--bg:#EEF1EE;--ink:#141B18;--muted:#58655F;--line:#D0D8D2;--accent:#2B44C4;--card:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1412;--ink:#E4EBE6;--muted:#97A39D;--line:#2C3531;--accent:#8E9EFF;--card:#181F1C;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,sans-serif}
+main{max-width:640px;margin:0 auto;padding:28px max(18px,env(safe-area-inset-left,0px)) 48px}
+h1{font-size:30px;line-height:1.1;margin:0 0 6px}h2{font-size:19px;margin:28px 0 8px}
+.lede{color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px}
+ul{margin:6px 0;padding-left:20px}li{margin:4px 0}a{color:var(--accent)}
+.small{color:var(--muted);font-size:14px}
+</style></head>
+<body><main>
+<h1>What Normal Reviews shares</h1>
+<p class="lede">This is a private beta for a small group of testers. Here’s exactly what happens with your data.</p>
+
+<h2>Stays on your phone, never uploaded</h2>
+<div class="card"><ul>
+<li>Your Google Timeline file and everything in it</li>
+<li>Where you stopped, when, and for how long</li>
+<li>Stops that aren’t restaurants, and visits you haven’t rated</li>
+<li>Your home and work</li>
+</ul></div>
+
+<h2>Shared when you rate a restaurant</h2>
+<div class="card"><ul>
+<li>Which restaurant, and its location</li>
+<li>The <b>day</b> of your visit (never the time)</li>
+<li>Your rating, and any comment, problem reasons or photo you add</li>
+</ul>
+<p class="small">Photos are shrunk on your phone first, which also removes the hidden location data cameras store in them.</p></div>
+
+<h2>Who sees it</h2>
+<div class="card"><ul>
+<li><b>Friends</b> (people who added your friend code, or whose code you added) see your name next to your ratings.</li>
+<li><b>Everyone else</b> in the beta sees your ratings as “A diner,” with only a rating count and whether you tend to rate high or low.</li>
+<li>Your email is used only to sign in. Other testers never see it.</li>
+</ul></div>
+
+<h2>Your controls</h2>
+<div class="card"><ul>
+<li><b>Undo</b> a rating to remove it from everyone’s view.</li>
+<li><b>Friends tab → Delete my shared data</b> removes all your ratings, comments, photos and friendships from the shared database.</li>
+<li>Prefer to keep it private? Tap “Not now” at sign-in and the app works just for you.</li>
+</ul></div>
+
+<p class="small">Where it’s stored: a Supabase database run by the app’s creator. Questions or deletion requests: ask the person who invited you.<br>Restaurant data: Overture Maps Foundation and © OpenStreetMap contributors.</p>
+</main></body></html>
