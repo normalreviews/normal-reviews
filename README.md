@@ -10,6 +10,10 @@ Honest restaurant scores from verified visits, curved so a 3.00 means normal.
     © OpenStreetMap contributors). `manifest.json` lists tiles; `f/` has restaurants with names,
     `o/` has other places (location and type only)
   - `privacy.html`: what testers share
+- `app/`: the Android app (Capacitor). It opens the hosted site and adds background visit detection.
+  `.github/workflows/android.yml` builds a signed APK on pushes to `dev` ("NR Dev", opens the dev site) and
+  `main` ("Normal Reviews"), published as GitHub releases `android-dev` and `android-latest`. Signing key:
+  `app/keystore/normal-reviews-beta.p12`, password in the `APK_KEY_PASSWORD` repo secret.
 - `tools/build_tiles.py`: rebuilds `site/places/` from the Overture notebook output
   (`tools/Get-West-Places.ipynb` and `tools/Get-West-Bars.ipynb`, run in Google Colab)
 - `setup.sql`: the Supabase database (tables, privacy rules, functions). Run once in the SQL Editor.

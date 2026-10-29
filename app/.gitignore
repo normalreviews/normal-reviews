@@ -1,0 +1,6 @@
+node_modules/
+android/
+out/
+build.log
+capacitor.config.json
+package-lock.json

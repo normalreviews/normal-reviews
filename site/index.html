@@ -511,6 +511,13 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <p class="fine">The file is read on this phone and nothing is uploaded. Restaurants are named from an open map of places (Overture Maps and OpenStreetMap). The app downloads that map only for the areas you’ve been, about 25 km at a time. A stop counts only if a restaurant is within 15 m of it; everything else goes to Skipped places, where you can restore it. Home and work are skipped automatically. Re-import anytime; visits you already have are not duplicated.</p>
       </div>
 
+      <div class="panel" id="gpsPanel" hidden>
+        <h2 class="h2">Automatic visit detection</h2>
+        <p class="status" id="gpsStatus"></p>
+        <div class="btns"><button class="btn" id="gpsBtn" data-cmd="gps">Turn on</button></div>
+        <p class="fine">When you stay somewhere 20+ minutes, your phone checks it against the restaurant map. Restaurant visits become cards; every other stop is forgotten right away. No location history is kept on the phone or sent anywhere. Android shows a small notification while this is on. It uses some battery; turn it off anytime.</p>
+      </div>
+
       <div class="panel">
         <h2 class="h2">Scoring dials</h2>
         <div class="dials" id="dials"></div>
@@ -691,6 +698,7 @@ function meta(key){
 }
 function mapsUrl(tp){
   if(!tp||!isFinite(tp.lat))return null;
+  if(!tp.placeId&&tp.name)return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(tp.name+' '+(tp.addr||'')+' '+tp.lat.toFixed(4)+','+tp.lng.toFixed(4));
   let u='https://www.google.com/maps/search/?api=1&query='+tp.lat+','+tp.lng;
   if(tp.placeId) u+='&query_place_id='+encodeURIComponent(tp.placeId);
   return u;
@@ -1406,17 +1414,21 @@ function fit(kind,mins,h){
 /* Decide one stop: a restaurant within 15 m names it (best fit for your stay wins; the rest become one-tap fixes).
    A non-food place clearly closer skips it. No restaurant within 15 m skips it, unless it was a 40+ minute mealtime stay
    with restaurants a little farther out, which asks "Were you at…". */
-function judge(la,ln,vs){
-  const F=nearby(la,ln,ASK),O=nearestOther(la,ln,ASK),mealish=vs.some(isMealish);
-  const near=F.filter(p=>p.d<=NEAR);
+/* Timeline stops sit on Google's pin for the place, so 15 m is enough. Raw GPS from the phone is noisier: 35 m, a bigger margin before a
+   closer shop or gym wins, and a "Were you at…" question when two restaurants are about equally likely. */
+function judge(la,ln,vs,gps){
+  const R=gps?35:NEAR,A=gps?60:ASK,margin=gps?20:5;
+  const F=nearby(la,ln,A),O=nearestOther(la,ln,A),mealish=vs.some(isMealish);
+  const near=F.filter(p=>p.d<=R);
   if(near.length){
-    if(O&&O.d+5<near[0].d&&!mealish)return {food:false,why:O.cat};
-    const sc=near.map(p=>{let f=0;for(const v of vs)f+=fit(p.k,(v.end-v.start)/6e4,hourOf((v.start+v.end)/2));return {...p,s:(vs.length?f/vs.length:1)*(1-p.d/(NEAR*2))}}).sort((a,b)=>b.s-a.s);
+    if(O&&O.d+margin<near[0].d&&!mealish)return {food:false,why:O.cat};
+    const sc=near.map(p=>{let f=0;for(const v of vs)f+=fit(p.k,(v.end-v.start)/6e4,hourOf((v.start+v.end)/2));return {...p,s:(vs.length?f/vs.length:1)*(1-p.d/(R*2))}}).sort((a,b)=>b.s-a.s);
+    if(gps&&sc.length>1&&sc[1].s>=sc[0].s*.85)return {food:'ask',cands:sc.slice(0,3)};
     return {food:true,best:sc[0],alts:sc.slice(1,4)};
   }
   if(mealish&&F.length)return {food:'ask',cands:F.slice(0,3)};
-  if(O&&O.d<=NEAR&&DRINKS.test(O.cat))return {food:'bar',label:O.cat};
-  return {food:false,why:O&&O.d<=NEAR?O.cat:'No restaurant within 15 m'};
+  if(O&&O.d<=R&&DRINKS.test(O.cat))return {food:'bar',label:O.cat};
+  return {food:false,why:O&&O.d<=R?O.cat:`No restaurant within ${R} m`};
 }
 const MATCH_V=5,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
 function matchPlaces(keys){
@@ -1445,6 +1457,89 @@ function matchPlaces(keys){
   }
   return {auto,ask,skip};
 }
+
+/* ---------- automatic visit detection (Android app only) ----------
+   The phone reports a location when you move. A stay of 20+ minutes in one spot becomes a candidate stop; it is checked
+   against the restaurant map right here, and only restaurant visits are kept. Everything else, and every raw location,
+   is forgotten: the only thing remembered between fixes is the spot you're in right now. */
+const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+const GLS='normal-reviews.gps';
+let BG=null,gpsWatch=null;
+function gpsLoad(){try{return JSON.parse(localStorage.getItem(GLS))||{}}catch(e){return {}}}
+function gpsSave(g){try{localStorage.setItem(GLS,JSON.stringify(g))}catch(e){}}
+let GPS=gpsLoad();
+const metersBetween=(a,b)=>Math.hypot((a.lat-b.lat)*110540,(a.lng-b.lng)*Math.cos(a.lat*Math.PI/180)*111320);
+async function gpsStart(ask){
+  if(!NATIVE)return false;
+  try{
+    BG=BG||Capacitor.registerPlugin('BackgroundGeolocation');
+    if(gpsWatch)return true;
+    gpsWatch=await BG.addWatcher({backgroundTitle:'Normal Reviews',backgroundMessage:'Noticing restaurant visits. Nothing else is kept.',requestPermissions:!!ask,stale:false,distanceFilter:25},
+      (loc,err)=>{
+        if(err){if(err.code==='NOT_AUTHORIZED'){gpsStop();GPS.on=false;gpsSave(GPS);renderGps();toast('Location is off for Normal Reviews. Turn it on in Settings to detect visits.')}return}
+        if(loc)gpsFix(loc);
+      });
+    return true;
+  }catch(e){console.warn(e);toast('Couldn’t start visit detection: '+(e&&e.message||e));return false}
+}
+async function gpsStop(){if(BG&&gpsWatch){try{await BG.removeWatcher({id:gpsWatch})}catch(e){}}gpsWatch=null}
+function gpsFix(loc){
+  if(!isFinite(loc.latitude)||!isFinite(loc.longitude)||(loc.accuracy&&loc.accuracy>100))return;
+  const p={lat:loc.latitude,lng:loc.longitude,t:loc.time||Date.now()},c=GPS.cur;
+  GPS.lastFix=p.t;
+  const d=c?metersBetween(c,p):Infinity,acc=loc.accuracy||0;
+  if(c&&d<=Math.max(60,acc*1.5)){
+    if(acc<=40){const w=c.n/(c.n+1);c.lat=c.lat*w+p.lat*(1-w);c.lng=c.lng*w+p.lng*(1-w);c.n++}
+    c.t1=p.t;
+  }else if(c&&acc>40&&d<150){
+    /* a fuzzy indoor reading a little way off: not proof you left */
+  }else{
+    if(c)gpsClose(c,p.t);
+    GPS.cur={lat:p.lat,lng:p.lng,t0:p.t,t1:p.t,n:1};
+  }
+  gpsSave(GPS);renderGps();
+}
+/* you left the spot: was it a meal? */
+async function gpsClose(c,leftAt){
+  const start=c.t0,end=Math.max(c.t1,Math.min(leftAt,c.t1+3*3600e3));
+  const mins=(end-start)/6e4;
+  if(mins<state.params.minDwell||mins>6*60)return;
+  if(state.visits.some(v=>v.start<end&&v.end>start))return;          /* already have this visit (e.g. from a Timeline import) */
+  await loadTilesFor([c]);
+  if(!covered(c.lat,c.lng)||!tilesReady(c.lat,c.lng))return;
+  const vs=[{start,end}],cl=judge(c.lat,c.lng,vs,true);
+  let key,tp;
+  if(cl.food===true){
+    const b=cl.best;key='p:'+Math.round(b.lat*1e5)+','+Math.round(b.lng*1e5);
+    tp=state.tplaces[key]||(state.tplaces[key]={lat:b.lat,lng:b.lng,name:b.n,label:b.l,addr:b.c||null,osm:true,osmV:MATCH_V,gps:true});
+    if(!state.names[key])tp.alts=cl.alts.map(p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d)}));
+  }else if(cl.food==='ask'||cl.food==='bar'){
+    key='c:'+c.lat.toFixed(4)+','+c.lng.toFixed(4);
+    tp=state.tplaces[key]||(state.tplaces[key]={lat:c.lat,lng:c.lng,name:null,osmV:MATCH_V,gps:true});
+    if(cl.food==='ask')tp.cands=cl.cands.map(p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d)}));else tp.label=tp.label||cl.label;
+  }else{GPS.skipped=(GPS.skipped||0)+1;gpsSave(GPS);renderGps();return}          /* not a restaurant: forgotten */
+  if(state.hidden.includes(key))return;
+  const id=key+'@'+start;if(state.visits.some(v=>v.id===id))return;
+  state.visits.push({id,key,start,end,source:'gps'});
+  GPS.found=(GPS.found||0)+1;GPS.lastFound=end;gpsSave(GPS);
+  save();renderDeck();refreshLater();
+}
+function renderGps(){
+  const box=$('#gpsPanel');if(!box)return;
+  box.hidden=!NATIVE;if(!NATIVE)return;
+  const on=!!GPS.on,t=x=>new Date(x).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  $('#gpsBtn').textContent=on?'Turn off':'Turn on';
+  $('#gpsBtn').classList.toggle('primary',!on);
+  $('#gpsStatus').innerHTML=on
+    ?`<b>On.</b> ${GPS.found||0} restaurant visit${GPS.found===1?'':'s'} found${GPS.lastFound?`, latest ${esc(t(GPS.lastFound))}`:''}. ${GPS.skipped||0} other stops ignored and forgotten.${GPS.lastFix?` Last location check ${esc(t(GPS.lastFix))}.`:' Waiting for the first location.'}`
+    :'Off. Turn it on and your phone notices restaurant visits on its own, no Timeline export needed.';
+}
+async function gpsToggle(){
+  if(GPS.on){await gpsStop();if(GPS.cur)delete GPS.cur;GPS.on=false;gpsSave(GPS);renderGps();toast('Visit detection is off. Nothing about where you went is kept.');return}
+  const ok=await gpsStart(true);
+  if(ok){GPS.on=true;gpsSave(GPS);renderGps();toast('Visit detection is on. Eat somewhere for 20+ minutes and it shows up here.')}
+}
+if(NATIVE&&GPS.on)gpsStart(false);
 const FOOD=new Set(['restaurant','food','cafe','coffee_shop','bakery','bar','pub','wine_bar','meal_takeaway','meal_delivery','food_court','sandwich_shop','ice_cream_shop','dessert_shop','donut_shop','bagel_shop','juice_shop','tea_house','deli','diner','cafeteria','bar_and_grill','steak_house','confectionery','chocolate_shop','acai_shop','brewery','winery','beer_garden','brewpub','snack_bar','noodle_shop','dumpling_shop','food_stand']);
 const NOTFOOD=new Set(['grocery_store','supermarket','convenience_store','food_store','liquor_store','asian_grocery_store','market','gas_station']);
 const foodType=t=>FOOD.has(t)||/_(restaurant|cafe|bar|shop)$/.test(t)&&!NOTFOOD.has(t)&&!/(clothing|shoe|gift|book|pet|butcher|cheese|spice|beauty|barber|bicycle|cell_phone|electronics|furniture|hardware|home_goods|jewelry|sporting_goods|tire|auto_parts|thrift|toy|wholesale|discount|department|repair|pawn|print|florist|garden|cannabis|tobacco|vape)/.test(t);
@@ -1506,6 +1601,7 @@ async function importFiles(files){
       foodKeys.add(key);
       if(food!==true&&!covered(v.lat,v.lng)&&state.mealOnly&&!meal(hr(v.start))&&!meal(hr((v.start+v.end)/2))&&!meal(hr(v.end))){off++;continue}
     }
+    if(state.visits.some(x=>x.source==='gps'&&x.start<v.end&&x.end>v.start))continue;
     const dk=key+'|'+new Date(v.start).toDateString(), prev=keep.get(dk);
     if(!prev||(v.end-v.start)>(prev.end-prev.start))keep.set(dk,{...v,key});
   }
@@ -1555,8 +1651,8 @@ function go(t){
 }
 /* after a swipe: rebuild scores, rankings, map and settings once swiping pauses, leaving the deck alone */
 let rfT=0;
-function refreshLater(){clearTimeout(rfT);rfT=setTimeout(()=>{G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderRank();renderFriends();renderLogic();renderMap()},600)}
-function refresh(){clearTimeout(rfT);G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
+function refreshLater(){clearTimeout(rfT);rfT=setTimeout(()=>{renderGps();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderRank();renderFriends();renderLogic();renderMap()},600)}
+function refresh(){clearTimeout(rfT);renderGps();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
 
 /* ---------- shared backend (Supabase): used only when config.js has your project's keys ---------- */
 const CFG=window.NR_CONFIG||{};
@@ -1611,8 +1707,9 @@ function showSignIn(step,email){
   if(!sb)return;
   if(step==='code'){
     acctOpen(`<h2 class="h2">Check your email</h2>
-      <p class="fine">We sent a sign-in email to <b>${esc(email)}</b>. Open it on this phone and tap the sign-in link; you’ll be signed in automatically. It can take a minute, so check spam too.</p><p class="fine">If the email shows a number code instead, type it here:</p>
-      <form class="acctf" data-form="code" data-email="${esc(email)}"><input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code" aria-label="Sign-in code" required><button class="btn primary">Sign in</button></form>
+      ${NATIVE?`<p class="fine">We sent a sign-in email to <b>${esc(email)}</b>. In your email app, <b>press and hold</b> the sign-in link, tap <b>Copy link</b>, then paste it here. It can take a minute, so check spam too.</p>`
+      :`<p class="fine">We sent a sign-in email to <b>${esc(email)}</b>. Open it on this phone and tap the sign-in link; you’ll be signed in automatically. It can take a minute, so check spam too.</p><p class="fine">If the link opens in a different app or browser, press and hold it instead, tap Copy link, and paste it here. If the email shows a number code, type that.</p>`}
+      <form class="acctf" data-form="code" data-email="${esc(email)}"><input id="otp" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" placeholder="${NATIVE?'Paste the link':'Link or code'}" aria-label="Sign-in link or code" required><button class="btn primary">Sign in</button></form>
       <button class="lnk" data-cmd="signin">Use a different email</button>`);
     return;
   }
@@ -1637,9 +1734,16 @@ document.addEventListener('submit',async e=>{
       if(error)throw error;
       showSignIn('code',email);
     }else if(f.dataset.form==='code'){
-      const token=f.querySelector('#otp').value.replace(/\s/g,'');
-      const {error}=await sb.auth.verifyOtp({email:f.dataset.email,token,type:'email'});
-      if(error)throw error;
+      const raw=f.querySelector('#otp').value.trim(),token=raw.replace(/\s/g,'');
+      let res;
+      if(/access_token=/.test(raw)){                       /* the address the link landed on */
+        const q=new URLSearchParams(raw.slice(raw.indexOf('#')+1));
+        res=await sb.auth.setSession({access_token:q.get('access_token'),refresh_token:q.get('refresh_token')});
+      }else if(/[?&]token=/.test(raw)){                    /* the link from the email itself */
+        const q=new URL(raw.replace(/^[^h]*/,'')).searchParams;
+        res=await sb.auth.verifyOtp({token_hash:q.get('token'),type:q.get('type')||'magiclink'});
+      }else res=await sb.auth.verifyOtp({email:f.dataset.email,token,type:'email'});
+      if(res.error)throw res.error;
     }else if(f.dataset.form==='name'){
       const n=f.querySelector('#dname').value.trim().slice(0,40);
       const {error}=await sb.from('profiles').update({display_name:n}).eq('id',me.id);
@@ -1795,6 +1899,7 @@ document.addEventListener('click',e=>{
       const tp=state.tplaces[k];if(tp){tp.skipWhy=null;tp.osmV=0}
       loadTilesFor(tp?[tp]:[]).then(()=>{matchPlaces([k]);save();refresh()});save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
     case 'signin':showSignIn();break;
+    case 'gps':gpsToggle();break;
     case 'notnow':state.noSignIn=true;save();closeAcct();toast('You can sign in anytime from the Friends tab.');break;
     case 'signout':if(sb)sb.auth.signOut().then(()=>{state.noSignIn=true;save();toast('Signed out. Your ratings stay on this phone.')});break;
     case 'renameme':askName();break;

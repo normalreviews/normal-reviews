@@ -1,0 +1,65 @@
+name: Android app
+# Builds the Android app (APK) whenever the app wrapper changes.
+# dev  → "NR Dev" app that opens https://dev--normalreviews.netlify.app  (release tag android-dev)
+# main → "Normal Reviews" app that opens https://normalreviews.netlify.app (release tag android-latest)
+on:
+  push:
+    branches: [dev, main]
+    paths: ['app/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: android-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      KEY_PW: ${{ secrets.APK_KEY_PASSWORD }}
+      VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick dev or live settings
+        run: |
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            { echo "APP_ID=com.normalreviews.app"; echo "APP_NAME=Normal Reviews"; echo "APP_URL=https://normalreviews.netlify.app"; echo "TAG=android-latest"; echo "APK=normal-reviews.apk"; } >> "$GITHUB_ENV"
+          else
+            { echo "APP_ID=com.normalreviews.app.dev"; echo "APP_NAME=NR Dev"; echo "APP_URL=https://dev--normalreviews.netlify.app"; echo "TAG=android-dev"; echo "APK=normal-reviews-dev.apk"; } >> "$GITHUB_ENV"
+          fi
+      - name: Check the signing password is set
+        run: |
+          if [ -z "$KEY_PW" ]; then
+            echo "::error title=Missing secret::Add the APK_KEY_PASSWORD secret: GitHub repo → Settings → Secrets and variables → Actions → New repository secret."
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build the APK
+        working-directory: app
+        run: |
+          set -o pipefail
+          bash scripts/build.sh 2>&1 | tee build.log
+      - name: Show why the build failed
+        if: failure()
+        run: |
+          if [ -f app/build.log ]; then
+            msg=$(grep -v '^\s*$' app/build.log | tail -n 80 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Build failed::${msg}"
+          fi
+      - name: Publish the APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: ${{ env.APP_NAME }} for Android
+          prerelease: true
+          make_latest: false
+          files: app/out/${{ env.APK }}
+          body: |
+            Install on Android: download ${{ env.APK }} on your phone, open it, and allow installing from your browser if asked.
+            Opens ${{ env.APP_URL }}. Built from ${{ github.sha }} (build ${{ github.run_number }}).
