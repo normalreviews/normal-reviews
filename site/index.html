@@ -345,7 +345,11 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .codebox{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface-2);border-radius:12px;padding:10px 12px}
 .codebox b{display:block;font:600 24px/1.1 var(--f-mono);letter-spacing:.12em}
 .addf,.acctf{display:flex;gap:8px}
-.acctf.col{flex-direction:column}.acctf.col input{flex:none}.acctf.col .btns{margin:2px 0 0}
+.acctf.col{flex-direction:column}
+.pinbig{font:800 44px/1 var(--f-display,system-ui);letter-spacing:.18em;margin:2px 0 4px}
+.acctf input[readonly]{color:var(--muted)}
+.invbox{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding:12px;border-radius:12px;background:var(--surface-2)}
+.invlink{font:500 12.5px var(--f-mono,monospace);overflow-wrap:anywhere;margin:0;user-select:all}.acctf.col input{flex:none}.acctf.col .btns{margin:2px 0 0}
 #acctBody .lnks{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 .addf input,.acctf input{flex:1;min-width:0;font:600 16px var(--f-body);padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
 .addf input:focus,.acctf input:focus{outline:none;border-color:var(--accent)}
@@ -504,6 +508,13 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <form id="addFriendForm" class="addf"><input id="friendCode" placeholder="Friend’s code" maxlength="10" autocomplete="off" autocapitalize="characters" aria-label="Friend’s code"><button class="btn primary">Add friend</button></form>
         <div class="btns"><button class="btn ghost" data-cmd="renameme">Change my name</button><button class="btn ghost" data-cmd="signout">Sign out</button><button class="btn danger" data-cmd="deleteshared" id="delSharedBtn">Delete my shared data</button></div>
         <p class="fine"><a href="privacy.html" target="_blank" rel="noopener">What’s shared and what isn’t</a></p>
+      </div>
+      <div class="panel" id="invitePanel" hidden>
+        <div class="listhead"><h2 class="h2">Invite someone</h2><span class="fine" id="betaSpots"></span></div>
+        <p class="fine">They get a link that works once, for their email, for 14 days. They choose their own PIN, and you become friends automatically.</p>
+        <form id="inviteForm" class="addf"><input id="inviteEmail" type="email" inputmode="email" autocomplete="off" placeholder="Their email" aria-label="Their email"><button class="btn primary" data-cmd="invite" type="button">Create invite</button></form>
+        <div id="inviteResult"></div>
+        <ul class="people" id="inviteList"></ul>
       </div>
       <div class="panel"><div class="listhead"><h2 class="h2">From friends</h2><span class="fine" id="feedNote"></span></div><ul class="feed" id="feed"></ul></div>
       <div class="panel"><div class="listhead"><h2 class="h2">Your friends</h2><span class="fine" id="followCount"></span></div><ul class="people" id="people"></ul></div>
@@ -684,6 +695,7 @@ function save(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
    The old address forwards to the new one and carries this phone's saved data along inside the link (#move=…),
    which browsers never send to any server. The new address merges it in once. */
 const MOVE_IN=location.hash.startsWith('#move=')?location.hash.slice(6):null;
+let joinToken=(location.hash.match(/^#invite=([a-f0-9]{8,64})$/)||[])[1]||null;   /* an invite link: #invite=<token> */
 const MOVE_TO=location.hostname==='normalreviews.netlify.app'?'https://normal-reviews.pages.dev/'
   :/--normalreviews\.netlify\.app$/.test(location.hostname)?'https://dev.normal-reviews.pages.dev/':null;
 async function packMove(){
@@ -1265,6 +1277,7 @@ function renderFriends(){
   const shared=!!sb, signed=!!(sb&&me);
   $('#signinPanel').hidden=!(shared&&!signed);
   $('#acctPanel').hidden=!signed;
+  $('#invitePanel').hidden=!signed;
   $('#suggestPanel').hidden=shared;
   if(signed){$('#myCode').textContent=(myProfile&&myProfile.friend_code)||'—';$('#acctEmail').textContent=me.email||''}
   const fs=new Set(state.friends);
@@ -1996,6 +2009,14 @@ const friendly=err=>{const m=(err&&err.message)||String(err);
   if(/failed to fetch|network/i.test(m))return 'No connection. Check your internet and try again.';
   if(/invalid login credentials/i.test(m))return 'That email and PIN don’t match. Check the PIN you were sent.';
   if(/pin length/i.test(m))return 'Your PIN is 4 digits.';
+  if(/name needed/i.test(m))return 'Add your first name. Friends see it next to your ratings.';
+  if(/already registered|already been registered/i.test(m))return 'You already have an account. Sign in with your email and PIN.';
+  if(/database error saving new user|valid invite|beta is full/i.test(m))return 'This invite can’t be used anymore: it was used, it expired, or the beta is full.';
+  if(/confirm email is on/i.test(m))return 'Almost: the organizer needs to turn off “Confirm email” in Supabase. Your account is waiting.';
+  if(/already_member/i.test(m))return 'That person already has an account.';
+  if(/beta_full/i.test(m))return 'The beta is full. No more invites until someone leaves or the limit goes up.';
+  if(/too_many_open/i.test(m))return 'You have 10 invites waiting. Wait until some are used or expire.';
+  if(/invalid_email/i.test(m))return 'That doesn’t look like an email address.';
   if(/email not confirmed/i.test(m))return 'This account isn’t switched on yet. Ask the person who invited you.';
   return m};
 
@@ -2010,12 +2031,13 @@ async function backendInit(){
     const id=session&&session.user?session.user.id:null;
     if(id!==(me&&me.id)){me=session?session.user:null;me?afterSignIn():signedOut()}
   });
-  if(me)await afterSignIn();else signedOut();
+  if(me){if(joinToken){joinToken=null;toast('You’re already signed in. Invite links are for new testers.')}await afterSignIn()}else signedOut();
 }
 function signedOut(){
   myProfile=null;friendsList=[];remotePlaces={};
   if(!state.demo){world=EMPTY_WORLD;state.friends=[]}
   refresh();
+  if(joinToken){showJoin(joinToken);return}
   if(!state.noSignIn)showSignIn();
 }
 /* wipe what this phone keeps (visits, names, unsent ratings, photos, visit detection); the account's shared ratings are untouched */
@@ -2045,7 +2067,9 @@ async function finishSignIn(){
   await syncUp();
   flushLinks();
   await pullShared(true);
-  if(!myProfile.display_name)askName();
+  if(pendingWelcome)showWelcome();
+  else if(!myProfile.display_name)askName();
+  renderInvites();
 }
 
 /* account panel on the Settings screen */
@@ -2091,11 +2115,67 @@ function showSignIn(step,email){
     <p class="fine">Use your email and the 4-digit PIN you were sent for the beta. Your Timeline and visits stay on this phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
     <form class="acctf col" data-form="pass">
       <input id="email" type="email" autocomplete="username" inputmode="email" placeholder="Email" value="${esc(email||'')}" aria-label="Email" required>
-      <input id="pw" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" placeholder="4-digit PIN" aria-label="4-digit PIN" required>
+      <input id="pw" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="4-digit PIN" aria-label="4-digit PIN" required>
       <div class="btns"><button class="btn primary">Sign in</button></div>
     </form>
-    <p class="fine">No PIN yet? Ask the person who invited you.</p>
+    <p class="fine">New here? You need an invite link from someone in the beta.</p>
     <div class="lnks"><button class="lnk" data-cmd="notnow">Not now, use it just for me</button><button class="lnk" data-cmd="linksignin">Email me a sign-in link instead</button></div>`);
+}
+/* ---------- inviting ---------- */
+async function renderInvites(){
+  if(!sb||!me)return;
+  try{
+    const [{data:st},{data:inv}]=await Promise.all([sb.rpc('beta_status'),sb.from('invites').select('email,created_at,expires_at,used_at').order('created_at',{ascending:false}).limit(20)]);
+    if(st){const left=Math.max(0,st.max-st.users);$('#betaSpots').textContent=`${left} of ${st.max} spots left`}
+    const now=Date.now(),d=t=>new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    $('#inviteList').innerHTML=(inv||[]).map(i=>`<li><span class="av anon" aria-hidden="true">@</span><div><div class="nm">${esc(i.email)}</div><div class="meta">${i.used_at?'Joined '+d(i.used_at):Date.parse(i.expires_at)<now?'Expired':'Waiting · link works until '+d(i.expires_at)}</div></div></li>`).join('');
+  }catch(e){console.warn('invites',e)}
+}
+async function createInvite(btn){
+  const em=($('#inviteEmail').value||'').trim();if(!em){toast('Type their email first.');$('#inviteEmail').focus();return}
+  btn.disabled=true;
+  try{
+    const {data:token,error}=await sb.rpc('create_invite',{p_email:em});if(error)throw error;
+    const link=location.origin+location.pathname+'#invite='+token,from=(myProfile&&myProfile.display_name)||'A friend';
+    const body=`${from} invited you to the Normal Reviews beta: honest restaurant scores from the places people actually eat.\n\nJoin here (works once, for ${em.toLowerCase()}, for 14 days):\n${link}\n\nYou'll pick a 4-digit PIN when you join. On Android you can then install the app:\n${APK_URL}\n\nYour Timeline stays on your phone; only restaurants you rate are shared.`;
+    const mail='mailto:'+encodeURIComponent(em)+'?subject='+encodeURIComponent('Join me on Normal Reviews')+'&body='+encodeURIComponent(body);
+    $('#inviteResult').innerHTML=`<div class="invbox"><p class="fine">Invite for <b>${esc(em)}</b>:</p><p class="invlink">${esc(link)}</p>
+      <div class="btns"><a class="btn primary" href="${esc(mail)}">Email it</a><button class="btn" data-cmd="copyinvite" data-link="${esc(link)}">Copy link</button></div></div>`;
+    $('#inviteEmail').value='';renderInvites();
+  }catch(e){toast(friendly(e))}
+  finally{btn.disabled=false}
+}
+/* ---------- joining from an invite link ---------- */
+const APK_URL=/^dev\./.test(location.hostname)?'https://github.com/normalreviews/normal-reviews/releases/download/android-dev/normal-reviews-dev.apk':'https://github.com/normalreviews/normal-reviews/releases/download/android-latest/normal-reviews.apk';
+let pendingWelcome=null;
+async function showJoin(token){
+  if(!sb)return;
+  acctOpen(`<h2 class="h2">You’re invited</h2><p class="fine">Checking your invite…</p>`);
+  let info=null;try{const {data,error}=await sb.rpc('invite_info',{p_token:token});if(error)throw error;info=data}catch(e){acctOpen(`<h2 class="h2">You’re invited</h2><p class="fine">Couldn’t check the invite: ${esc(friendly(e))}</p><button class="btn" data-cmd="joinretry">Try again</button>`);return}
+  if(!info||!info.ok){
+    const msg={used:'This invite has already been used. If that was you, sign in with your email and PIN.',expired:'This invite has expired. Ask the person who invited you for a new link.',full:'The beta is full right now. Ask the person who invited you to check back later.'}[info&&info.reason]||'This invite link isn’t valid. Ask the person who invited you to send it again.';
+    joinToken=null;
+    acctOpen(`<h2 class="h2">Can’t use this invite</h2><p class="fine">${esc(msg)}</p><div class="btns"><button class="btn primary" data-cmd="signin">Sign in</button><button class="btn" data-cmd="notnow">Not now</button></div>`);
+    return;
+  }
+  acctOpen(`<h2 class="h2">You’re invited</h2>
+    <p class="fine"><b>${esc(info.inviter)}</b> invited you to the Normal Reviews beta: honest restaurant scores from the places people actually eat. Your Timeline and visits stay on your phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
+    <form class="acctf col" data-form="join" data-token="${esc(token)}" data-email="${esc(info.email)}">
+      <input type="email" value="${esc(info.email)}" aria-label="Email" readonly>
+      <input id="jname" maxlength="40" autocomplete="given-name" placeholder="Your first name (friends see this)" aria-label="Your name" required>
+      <input id="jpin" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="Choose a 4-digit PIN" aria-label="Choose a 4-digit PIN" required>
+      <div class="btns"><button class="btn primary">Join the beta</button></div>
+    </form>
+    <p class="fine">You’ll sign in with ${esc(info.email)} and this PIN on any phone, so write it down.</p>
+    <button class="lnk" data-cmd="joinsignin">Already joined? Sign in</button>`);
+}
+function showWelcome(){
+  const w=pendingWelcome;pendingWelcome=null;if(!w)return;
+  acctOpen(`<h2 class="h2">Welcome, ${esc(w.name)}</h2>
+    <p class="fine">Your PIN is</p><p class="pinbig">${esc(w.pin)}</p>
+    <p class="fine">Sign in with <b>${esc(w.email)}</b> and this PIN on any phone. Write it down or take a screenshot.</p>
+    ${NATIVE?'':`<p class="fine"><b>Android?</b> Get the app, open it, and sign in with your email and PIN. On iPhone, use this page: Share → Add to Home Screen.</p>`}
+    <div class="btns">${NATIVE?'':`<a class="btn" href="${APK_URL}">Get the Android app</a>`}<button class="btn primary" data-cmd="closeacct">Start</button></div>`);
 }
 function askName(){
   acctOpen(`<h2 class="h2">What should friends call you?</h2>
@@ -2103,11 +2183,22 @@ function askName(){
     <form class="acctf" data-form="name"><input id="dname" maxlength="40" placeholder="Your first name" value="${esc(myProfile&&myProfile.display_name||'')}" aria-label="Your name" required><button class="btn primary">Save</button></form>`);
 }
 document.addEventListener('submit',async e=>{
+  if(e.target.id==='inviteForm'){e.preventDefault();createInvite(e.target.querySelector('button'));return}
   const f=e.target.closest('.acctf,#addFriendForm');if(!f||!sb)return;
   e.preventDefault();
   const btn=f.querySelector('button');btn.disabled=true;
   try{
-    if(f.dataset.form==='pass'){
+    if(f.dataset.form==='join'){
+      const name=f.querySelector('#jname').value.trim().slice(0,40),pin=f.querySelector('#jpin').value.replace(/\D/g,''),email=f.dataset.email;
+      if(!name)throw new Error('name needed');
+      if(pin.length!==4)throw new Error('pin length');
+      pendingWelcome={name,pin,email};
+      const {data,error}=await sb.auth.signUp({email,password:'nrbeta'+pin,options:{data:{invite:f.dataset.token,display_name:name}}});
+      if(error){pendingWelcome=null;throw error}
+      if(data&&data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){pendingWelcome=null;throw new Error('already registered')}
+      if(!data.session){pendingWelcome=null;throw new Error('confirm email is on')}
+      joinToken=null;
+    }else if(f.dataset.form==='pass'){
       const email=f.querySelector('#email').value.trim().toLowerCase(),pin=f.querySelector('#pw').value.replace(/\D/g,'');
       if(pin.length!==4)throw new Error('pin length');
       const {error}=await sb.auth.signInWithPassword({email,password:'nrbeta'+pin});
@@ -2295,6 +2386,11 @@ document.addEventListener('click',e=>{
       const tp=state.tplaces[k];if(tp){tp.skipWhy=null;tp.osmV=0}
       loadTilesFor(tp?[tp]:[]).then(()=>{matchPlaces([k]);save();refresh()});save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
     case 'signin':showSignIn(null,($('#email')||{}).value);break;
+    case 'closeacct':closeAcct();break;
+    case 'joinsignin':joinToken=null;showSignIn(null,($('[data-form="join"]')||{dataset:{}}).dataset.email);break;
+    case 'joinretry':if(joinToken)showJoin(joinToken);break;
+    case 'invite':createInvite(t);break;
+    case 'copyinvite':{const l=t.dataset.link;try{navigator.clipboard.writeText(l).then(()=>toast('Invite link copied'),()=>toast(l))}catch(_){toast(l)}break}
     case 'linksignin':showSignIn('link',($('#email')||{}).value);break;
     case 'gps':gpsToggle();break;
     case 'addvisit':openAdd();break;
