@@ -221,6 +221,19 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .menu .mlist{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
 .mitem{appearance:none;display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:center;text-align:left;width:100%;border:0;background:none;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--line)}
 .mitem:last-child{border-bottom:0}
+.addv{display:flex;flex-direction:column;gap:10px}
+.addv .avrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.addv input,.addv select{font:600 16px var(--f-body);padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);min-width:0}
+.addv input:focus,.addv select:focus{outline:none;border-color:var(--accent)}
+.addv #avq{flex:1 1 180px}
+.addv label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--muted);flex:1 1 140px}
+.avres{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;max-height:min(46vh,380px);overflow-y:auto;background:var(--surface)}
+.avres:empty{display:none}
+.avres button{appearance:none;display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 14px;cursor:pointer;color:var(--ink);font:inherit}
+.avres li:last-child button{border-bottom:0}
+.avres b{display:block;font-size:15px;font-weight:650}
+.avres small{display:block;font-size:12.5px;color:var(--muted)}
+.avres button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .mitem .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--surface-2);color:var(--ink)}
 .mitem .ic svg{width:20px;height:20px}
 .mitem b{display:block;font-size:15px;font-weight:650}
@@ -396,6 +409,7 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
           <button class="btn ghost" data-cmd="undo" id="undoBtn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
           <label class="btn" for="file" role="button" tabindex="0">Import Timeline</label>
+          <button class="btn" data-cmd="addvisit">+ Add visit</button>
         </div>
       </div>
       <div class="stack" id="stack"></div>
@@ -694,7 +708,8 @@ function meta(key){
   const tp=state.tplaces[key]||remotePlaces[key]||{};
   const name=state.names[key]||tp.name;
   const coords=isFinite(tp.lat)?tp.lat.toFixed(4)+', '+tp.lng.toFixed(4):'';
-  return {name:name||'Unnamed stop',sub:tp.addr?tp.addr.split(',').slice(0,2).join(','):name?'From your Timeline':(coords||'From your Timeline'),hood:'',cuisine:tp.label||'Timeline stop',hue:hash(key)%360,tl:true,named:!!name,coords,tp,lat:tp.lat,lng:tp.lng};
+  const src=tp.manual?'Added by you':tp.gps?'Found by your phone':'From your Timeline';
+  return {name:name||'Unnamed stop',sub:tp.addr?tp.addr.split(',').slice(0,2).join(','):name?src:(coords||src),hood:'',cuisine:tp.label||'Timeline stop',hue:hash(key)%360,tl:true,named:!!name,coords,tp,lat:tp.lat,lng:tp.lng};
 }
 function mapsUrl(tp){
   if(!tp||!isFinite(tp.lat))return null;
@@ -853,11 +868,26 @@ function renderHeader(){
 }
 
 /* ---------- deck ---------- */
+/* the same restaurant on the same day is one visit, however many stops or sources found it */
+const dayOf=t=>new Date(t).toDateString();
+const mealName=t=>{const h=new Date(t).getHours();return h<11?'Breakfast':h<15?'Lunch':h<17?'Coffee or snack':h<22?'Dinner':'Late night'};
+function placeIdent(k){
+  const tp=state.tplaces[k],n=(state.names[k]||tp&&tp.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  return n&&tp&&isFinite(tp.lat)?'n:'+n+'@'+Math.round(tp.lat*200)+','+Math.round(tp.lng*160):n&&tp?'n:'+n:k;
+}
+const visitGroup=v=>placeIdent(v.key)+'|'+dayOf(v.start);
 function deckVisits(){
   const done=new Set(state.myReviews.map(r=>r.visitId)), hid=new Set(state.hidden), dis=new Set(state.dismissed), sk=state.skipped, cut=NOW-state.params.queueDays*DAY;
   const away=k=>{if(!state.bayOnly||!TM)return false;const tp=state.tplaces[k];return !!tp&&isFinite(tp.lat)&&!covered(tp.lat,tp.lng)};
-  return state.visits.filter(v=>!done.has(v.id)&&!hid.has(v.key)&&!dis.has(v.id)&&v.start>=cut&&!away(v.key))
-    .sort((a,b)=>{const sa=sk[a.id]||0,sb=sk[b.id]||0;if(!sa!==!sb)return sa?1:-1;if(sa)return sa-sb;return b.start-a.start});
+  const vmap=new Map(state.visits.map(v=>[v.id,v])),used=new Set();
+  for(const r of state.myReviews)used.add(placeIdent(r.key)+'|'+dayOf(r.ts));
+  for(const id of state.dismissed){const v=vmap.get(id);if(v)used.add(visitGroup(v))}
+  const out=[];
+  for(const v of state.visits.filter(v=>!done.has(v.id)&&!hid.has(v.key)&&!dis.has(v.id)&&v.start>=cut&&!away(v.key))
+    .sort((a,b)=>{if(a.pin||b.pin)return (+b.pin||0)-(+a.pin||0)||b.start-a.start;const sa=sk[a.id]||0,sb=sk[b.id]||0;if(!sa!==!sb)return sa?1:-1;if(sa)return sa-sb;return b.start-a.start})){
+    const g=visitGroup(v);if(used.has(g))continue;used.add(g);out.push(v);
+  }
+  return out;
 }
 function cardHTML(v){
   const m=meta(v.key), P=state.params, p=G.by.get(v.key), fs=new Set(state.friends);
@@ -887,7 +917,7 @@ function cardHTML(v){
   <div class="cbody">
     <h2 class="cname">${esc(m.name)}</h2>
     <p class="sub">${esc(m.tl?m.sub:m.hood+' · San Jose')}</p>
-    <p class="visit"><b>${esc(when(v.start))}</b><span>stayed ${dur(v.start,v.end)}</span></p>
+    <p class="visit"><b>${esc(v.source==='manual'?new Date(v.start).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+' · '+mealName(v.start):when(v.start))}</b>${v.source==='manual'?'':`<span>stayed ${dur(v.start,v.end)}</span>`}</p>
     ${extra}
     <p class="cnote">${esc(note)}</p>
   </div>
@@ -904,7 +934,7 @@ function renderDeck(){
   document.querySelectorAll('#acts .act').forEach(b=>b.disabled=!q.length);
   if(!q.length){
     stack.innerHTML=hasTimeline
-      ?`<div class="empty"><h2 class="h2">All caught up</h2><p>Export a fresh Timeline in a week or two and import it again. Only new visits are added.</p><div class="btns"><label class="btn primary" for="file" role="button" tabindex="0">Import Timeline</label></div></div>`
+      ?`<div class="empty"><h2 class="h2">All caught up</h2><p>Export a fresh Timeline in a week or two and import it again. Only new visits are added.</p><div class="btns"><label class="btn primary" for="file" role="button" tabindex="0">Import Timeline</label><button class="btn" data-cmd="addvisit">+ Add a visit</button></div></div>`
       :`<div class="empty"><h2 class="h2">Start with your Timeline</h2>
         <ol><li><b>Android:</b> Settings → Location → Location services → Timeline → Export Timeline data</li>
         <li><b>iPhone:</b> Google Maps → profile picture → Settings → Personal content → Export Timeline data</li>
@@ -988,7 +1018,8 @@ function openMenu(vid,view){
       ${item('mcomment',ICON.cmt,dr.comment?'Edit comment':'Add comment','Up to 140 characters, shown to everyone')}
       ${item('mproblem',ICON.warn,'There was a problem','Rate it 0 and flag what went wrong','warn')}
       ${item('mskip',ICON.skip,'Skip for now','Move to the back of your deck')}
-      ${m.tl?item('mnotfood',ICON.nope,'Not food','Hide this place for good','warn'):item('mnomeal',ICON.nope,'Didn’t eat here','Remove this visit without rating','warn')}
+      ${item('mnomeal',ICON.nope,'I didn’t visit','Remove this visit without rating','warn')}
+      ${m.tl?item('mnotfood',ICON.trash,'Not food','Hide this place for good','warn'):''}
     </div><button class="btn ghost" data-cmd="mclose" style="align-self:center">Cancel</button>`;
   }
   $('#menuBody').innerHTML=html;
@@ -1020,7 +1051,7 @@ function menuCmd(cmd){
       const n=deckVisits().length;
       state.skipped[vid]=Date.now();pushUndo({type:'skip',id:vid});save();closeMenu();refresh();
       toast(n>1?'Skipped. It’s at the back of your deck.':'Skipped. It’s the only card left, so it stays on top.');break}
-    case 'mnomeal':state.dismissed.push(vid);pushUndo({type:'dismiss',id:vid});save();closeMenu();refresh();toast('Visit removed');break;
+    case 'mnomeal':state.dismissed.push(vid);pushUndo({type:'dismiss',id:vid});save();closeMenu();refresh();toast('Removed. Tap Undo to bring it back.');break;
     case 'mnotfood':if(!state.hidden.includes(v.key))state.hidden.push(v.key);pushUndo({type:'hide',key:v.key});save();closeMenu();refresh();toast('Hidden. It won’t come back.');break;
   }
 }
@@ -1540,6 +1571,78 @@ async function gpsToggle(){
   if(ok){GPS.on=true;gpsSave(GPS);renderGps();toast('Visit detection is on. Eat somewhere for 20+ minutes and it shows up here.')}
 }
 if(NATIVE&&GPS.on)gpsStart(false);
+
+/* ---------- add a visit by hand (places the Timeline missed) ---------- */
+let avRef=null,avList=[],avT=0;
+function tilesNear(p,r){const s=new Set();for(const a of [-r,0,r])for(const b of [-r*1.25,0,r*1.25])s.add(tileId(p.lat+a,p.lng+b));return [...s]}
+async function avLoadAround(pts,r){await loadManifest();if(!TM)return;const ids=new Set();for(const p of pts)if(covered(p.lat,p.lng))tilesNear(p,r).forEach(i=>ids.add(i));await Promise.all([...ids].slice(0,12).map(loadTile))}
+function avRecent(){
+  const seen=new Set(),out=[];
+  for(const v of [...state.visits].sort((a,b)=>b.start-a.start)){const tp=state.tplaces[v.key];if(!tp||!isFinite(tp.lat))continue;const t=tileId(tp.lat,tp.lng);if(seen.has(t))continue;seen.add(t);out.push({lat:tp.lat,lng:tp.lng});if(out.length>=4)break}
+  return out;
+}
+function openAdd(){
+  menuVisit=null;avRef=null;
+  const d=new Date(),pad=n=>String(n).padStart(2,'0'),iso=x=>x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate());
+  const min=new Date(NOW-state.params.queueDays*DAY),h=d.getHours();
+  const meal=h<11?'8.5':h<15?'12.5':h<17?'15':h<22?'19':'22';
+  $('#menuBody').innerHTML=`<div class="grab"></div><div><p class="eyebrow">Missing from your Timeline?</p><h2 class="h2">Add a visit</h2></div>
+    <div class="addv">
+      <div class="avrow"><input id="avq" type="search" enterkeyhint="search" autocomplete="off" placeholder="Restaurant name" aria-label="Restaurant name"><button class="btn" data-cmd="avnear">Near me</button></div>
+      <p class="fine" id="avhint">Type a name to search places you’ve been near, or tap Near me.</p>
+      <ul class="avres" id="avres" aria-label="Matching restaurants"></ul>
+      <div class="avrow"><label for="avday">Day<input type="date" id="avday" value="${iso(d)}" min="${iso(min)}" max="${iso(d)}"></label>
+        <label for="avmeal">Meal<select id="avmeal">${[['8.5','Breakfast'],['12.5','Lunch'],['15','Coffee or snack'],['19','Dinner'],['22','Late night']].map(([v,l])=>`<option value="${v}"${v===meal?' selected':''}>${l}</option>`).join('')}</select></label></div>
+    </div>
+    <button class="btn ghost" data-cmd="avclose" style="align-self:center">Cancel</button>`;
+  const sh=$('#menu');if(sh.hidden){lastFocus=document.activeElement;sh.hidden=false}
+  $('#avq').focus({preventScroll:true});
+  $('#avq').addEventListener('input',()=>{clearTimeout(avT);avT=setTimeout(avSearch,150)});
+  avLoadAround(avRecent(),0.02).then(avSearch);
+}
+function avSearch(){
+  const box=$('#avres');if(!box)return;
+  const q=($('#avq').value||'').toLowerCase().replace(/[^a-z0-9 ]/g,'').trim(),ref=avRef||avRecent()[0]||null;
+  const dist=p=>ref?metersBetween(ref,p):0,res=[];
+  if(q||avRef){
+    for(const L of FG.values())for(const p of L){
+      const n=p.n.toLowerCase().replace(/[^a-z0-9 ]/g,'');let s;
+      if(!q)s=0;else if(n.startsWith(q))s=0;else if(n.includes(' '+q))s=1;else if(n.includes(q))s=2;else continue;
+      const d=dist(p);if(!q&&d>1500)continue;res.push({p,s,d});
+    }
+  }
+  res.sort((a,b)=>a.s-b.s||a.d-b.d);
+  avList=res.slice(0,15).map(x=>({...x.p,d:x.d}));
+  const km=d=>!ref?'':d<950?Math.round(d/10)*10+' m':(d/1609).toFixed(d<16000?1:0)+' mi';
+  box.innerHTML=avList.map((p,i)=>`<li><button data-cmd="avpick" data-i="${i}"><b>${esc(p.n)}</b><small>${esc([p.l,p.c,km(p.d)].filter(Boolean).join(' · '))}</small></button></li>`).join('')
+    +(q?`<li><button data-cmd="avcustom"><b>Add “${esc($('#avq').value.trim())}”</b><small>Not on the map? Add it by name${avRef?' at your current spot':''}.</small></button></li>`:'');
+  $('#avhint').textContent=!q&&!avRef?'Type a name to search places you’ve been near, or tap Near me.':avList.length?(avRef&&!q?'Closest to you:':'Pick the restaurant:'):'No match on the map nearby.';
+}
+async function avNear(btn){
+  if(!navigator.geolocation){toast('This phone can’t share its location here.');return}
+  btn.disabled=true;$('#avhint').textContent='Finding you…';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    avRef={lat:pos.coords.latitude,lng:pos.coords.longitude};btn.disabled=false;
+    await avLoadAround([avRef],0.01);avSearch();
+  },()=>{btn.disabled=false;$('#avhint').textContent='Couldn’t get your location. Search by name instead.'},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+}
+function avAdd(p){
+  const day=$('#avday').value,h=+$('#avmeal').value;if(!day)return toast('Pick the day you went.');
+  const [Y,M,D]=day.split('-').map(Number),start=new Date(Y,M-1,D,Math.floor(h),Math.round(h%1*60)).getTime(),end=start+60*6e4;
+  if(start>Date.now())return toast('That meal hasn’t happened yet. Pick an earlier meal or day.');
+  let key;
+  if(isFinite(p.lat)){key='p:'+Math.round(p.lat*1e5)+','+Math.round(p.lng*1e5);if(!state.tplaces[key])state.tplaces[key]={lat:p.lat,lng:p.lng,name:p.n,label:p.l||null,addr:p.c||null,osm:false,osmV:MATCH_V,manual:true}}
+  else{key='m:'+p.n.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,60);if(!state.tplaces[key])state.tplaces[key]={lat:NaN,lng:NaN,name:p.n,label:null,osm:false,osmV:MATCH_V,manual:true}}
+  state.hidden=state.hidden.filter(k=>k!==key);
+  const g=placeIdent(key)+'|'+dayOf(start),name=meta(key).name;
+  if(state.myReviews.some(r=>placeIdent(r.key)+'|'+dayOf(r.ts)===g)){toast(`You already rated ${name} that day.`);return}
+  const inGroup=state.visits.filter(v=>visitGroup(v)===g);
+  state.dismissed=state.dismissed.filter(id=>!inGroup.some(v=>v.id===id));     /* adding it by hand undoes "I didn't visit" */
+  const dup=inGroup[0];
+  if(dup){dup.pin=Date.now();save();closeMenu();go('rate');renderDeck();toast(`${name} that day is in your deck. It’s on top now.`);return}
+  state.visits.push({id:key+'@'+start,key,start,end,source:'manual',pin:Date.now()});
+  save();closeMenu();go('rate');renderDeck();refreshLater();toast(`Added ${name}. Swipe to rate it.`);
+}
 const FOOD=new Set(['restaurant','food','cafe','coffee_shop','bakery','bar','pub','wine_bar','meal_takeaway','meal_delivery','food_court','sandwich_shop','ice_cream_shop','dessert_shop','donut_shop','bagel_shop','juice_shop','tea_house','deli','diner','cafeteria','bar_and_grill','steak_house','confectionery','chocolate_shop','acai_shop','brewery','winery','beer_garden','brewpub','snack_bar','noodle_shop','dumpling_shop','food_stand']);
 const NOTFOOD=new Set(['grocery_store','supermarket','convenience_store','food_store','liquor_store','asian_grocery_store','market','gas_station']);
 const foodType=t=>FOOD.has(t)||/_(restaurant|cafe|bar|shop)$/.test(t)&&!NOTFOOD.has(t)&&!/(clothing|shoe|gift|book|pet|butcher|cheese|spice|beauty|barber|bicycle|cell_phone|electronics|furniture|hardware|home_goods|jewelry|sporting_goods|tire|auto_parts|thrift|toy|wholesale|discount|department|repair|pawn|print|florist|garden|cannabis|tobacco|vape)/.test(t);
@@ -1900,6 +2003,11 @@ document.addEventListener('click',e=>{
       loadTilesFor(tp?[tp]:[]).then(()=>{matchPlaces([k]);save();refresh()});save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
     case 'signin':showSignIn();break;
     case 'gps':gpsToggle();break;
+    case 'addvisit':openAdd();break;
+    case 'avclose':closeMenu();break;
+    case 'avnear':avNear(t);break;
+    case 'avpick':{const p=avList[+t.dataset.i];if(p)avAdd(p);break}
+    case 'avcustom':{const n=$('#avq').value.trim().slice(0,80);if(n)avAdd(avRef?{n,lat:avRef.lat,lng:avRef.lng}:{n});break}
     case 'notnow':state.noSignIn=true;save();closeAcct();toast('You can sign in anytime from the Friends tab.');break;
     case 'signout':if(sb)sb.auth.signOut().then(()=>{state.noSignIn=true;save();toast('Signed out. Your ratings stay on this phone.')});break;
     case 'renameme':askName();break;
