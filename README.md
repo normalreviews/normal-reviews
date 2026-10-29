@@ -11,6 +11,7 @@ Honest restaurant scores from verified visits, curved so a 3.00 means normal.
     `o/` has other places (location and type only)
   - `privacy.html`: what testers share
 - `tools/build_tiles.py`: rebuilds `site/places/` from the Overture notebook output
+  (`tools/Get-West-Places.ipynb` and `tools/Get-West-Bars.ipynb`, run in Google Colab)
 - `setup.sql`: the Supabase database (tables, privacy rules, functions). Run once in the SQL Editor.
 - `SETUP-CHECKLIST.md`: how the beta was set up.
 
