@@ -239,30 +239,15 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 #v-map{height:100%;padding-block:14px;gap:12px}
 .maptools{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .mapbox{position:relative;flex:1;min-height:300px;border-radius:18px;overflow:hidden;background:var(--land);border:1px solid var(--line)}
-#mapSvg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
-#mapSvg .hood{fill:var(--muted);font:700 9.5px var(--f-body);letter-spacing:.09em;text-transform:uppercase;opacity:.75}
-#mapSvg .city{fill:var(--muted);font:700 11px var(--f-body);letter-spacing:.06em;text-transform:uppercase}
-#mapSvg .shield rect{fill:var(--surface);stroke:var(--muted);stroke-width:1}
-#mapSvg .shield text{fill:var(--ink);font:600 9px var(--f-mono)}
-.pin{cursor:pointer}
-.pin rect{stroke-width:1.5}
-.pin text{font:600 11.5px var(--f-mono)}
-.pin.hi rect{fill:var(--accent);stroke:var(--surface)}
-.pin.hi text{fill:var(--accent-ink)}
-.pin.mid rect{fill:var(--surface);stroke:var(--accent)}
-.pin.mid text{fill:var(--accent)}
-.pin.lo rect{fill:var(--surface);stroke:var(--muted)}
-.pin.lo text{fill:var(--muted)}
-.pin.ghost circle{fill:var(--surface);stroke:var(--muted);stroke-width:1.5}
-.pin .pname{fill:var(--ink);font:650 11px var(--f-body);paint-order:stroke;stroke:var(--land);stroke-width:3px;stroke-linejoin:round}
-.pin .me{fill:var(--t4);stroke:var(--surface);stroke-width:1.5}
-.pin:focus{outline:none}
-.pin:focus-visible rect,.pin:focus-visible circle{stroke:var(--ink);stroke-width:2.5}
-.mapctl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px}
+#mlmap{position:absolute;inset:0}
+.mapmsg{position:absolute;inset:auto 16px 50% 16px;margin:0;text-align:center;color:var(--muted);font-size:14px}
+.maplibregl-ctrl-attrib{font-size:10px}
+.maplibregl-ctrl-group{border-radius:10px!important;box-shadow:0 1px 3px rgb(0 0 0 / .15)!important}
+.mapctl{position:absolute;right:10px;bottom:34px;display:flex;flex-direction:column;gap:6px}
 .mapctl button{appearance:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 20px/1 var(--f-body);display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 3px rgb(0 0 0 / .12)}
 .mapctl svg{width:18px;height:18px}
 .mapctl button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.mapnote{position:absolute;left:10px;bottom:8px;margin:0;font-size:11px;color:var(--muted);background:var(--surface);padding:4px 8px;border-radius:7px;border:1px solid var(--line)}
+.mapnote{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 140px);margin:0;font-size:10.5px;color:var(--muted);background:var(--surface);padding:3px 7px;border-radius:7px;border:1px solid var(--line);opacity:.92}
 
 /* problems, anonymity */
 .probtxt{color:var(--t0);font-weight:700}
@@ -278,7 +263,6 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .verified{display:inline-flex;align-items:center;gap:3px;color:var(--t3);font-weight:600}
 .verified svg{width:12px;height:12px}
 .rsn{font-size:12px;color:var(--t0);font-weight:600;margin-top:2px}
-.pin .prob{fill:var(--t0);stroke:var(--surface);stroke-width:1.5}
 
 /* sheet */
 .sheet{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:var(--scrim)}
@@ -470,13 +454,12 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <span class="fine" id="mapCount"></span>
       </div>
       <div class="mapbox" id="mapBox">
-        <svg id="mapSvg" role="group" aria-label="Map of rated places"></svg>
+        <div id="mlmap" role="region" aria-label="Map of rated places"></div>
+        <p class="mapmsg" id="mapMsg" hidden>The map couldn’t load. Check your connection and reload.</p>
         <div class="mapctl">
-          <button data-cmd="zin" aria-label="Zoom in">+</button>
-          <button data-cmd="zout" aria-label="Zoom out">−</button>
           <button data-cmd="zfit" aria-label="Show all places"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         </div>
-        <p class="mapnote">Simplified map · freeways approximate · restaurant data © OpenStreetMap contributors</p>
+        <p class="mapnote">Restaurant data: Overture Maps · © OpenStreetMap contributors</p>
       </div>
     </section>
 
@@ -580,6 +563,8 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <input type="file" id="photoFile" class="vh" accept="image/*" tabindex="-1" aria-hidden="true">
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.75.0/dist/umd/supabase.js"></script>
 <script>
@@ -1220,113 +1205,83 @@ function renderFriends(){
     :'This version is just you. Your ratings are real and stay on this phone. The shared version will let real friends rate into the same pool.';
 }
 
-/* ---------- map ---------- */
-const BAY=[[37.52,-122.16],[37.52,-121.93],[37.462,-121.942],[37.44,-121.968],[37.428,-121.998],[37.432,-122.04],[37.438,-122.08],[37.452,-122.115],[37.47,-122.16]];
-const FWY=[
- ['101',[[37.425,-122.10],[37.405,-122.05],[37.39,-122.0],[37.375,-121.95],[37.365,-121.92],[37.35,-121.885],[37.335,-121.855],[37.315,-121.83],[37.29,-121.81],[37.25,-121.78]],5],
- ['280',[[37.33,-122.07],[37.323,-122.02],[37.318,-121.975],[37.315,-121.935],[37.322,-121.9],[37.33,-121.875],[37.338,-121.855]],2],
- ['680',[[37.338,-121.855],[37.36,-121.835],[37.39,-121.82],[37.43,-121.81],[37.47,-121.80]],2],
- ['880',[[37.46,-121.925],[37.42,-121.915],[37.385,-121.915],[37.36,-121.92],[37.335,-121.925],[37.31,-121.94],[37.28,-121.955],[37.24,-121.975]],2],
- ['87',[[37.37,-121.925],[37.35,-121.905],[37.33,-121.89],[37.30,-121.875],[37.27,-121.86],[37.245,-121.85]],3],
- ['85',[[37.40,-122.07],[37.37,-122.06],[37.33,-122.04],[37.30,-122.00],[37.265,-121.95],[37.25,-121.87]],3]];
-const CITIES=['Mountain View','Sunnyvale','Cupertino','Santa Clara','Milpitas','Campbell','Los Gatos'];
-const MAP={c:null,z:0,fitZ:0,W:0,H:0,ptrs:new Map(),moved:0,raf:0,bound:false};
-const KX=Math.cos(37.33*Math.PI/180);
-const proj=(lat,lng)=>[lng*KX,-lat];
-function scr(lat,lng){const [X,Y]=proj(lat,lng);return [MAP.W/2+(X-MAP.c[0])*MAP.z,MAP.H/2+(Y-MAP.c[1])*MAP.z]}
-function fitMap(){
-  const ms=[...G.list,...F.list].map(p=>meta(p.key)).filter(m=>isFinite(m.lat)&&isFinite(m.lng));
-  const pts=ms.length?ms.map(m=>proj(m.lat,m.lng)):Object.values(HOODS).map(c=>proj(c[0],c[1]));
-  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
-  for(const [x,y] of pts){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
-  MAP.c=[(x0+x1)/2,(y0+y1)/2];
-  MAP.z=Math.min((MAP.W-60)/Math.max(x1-x0,.01),(MAP.H-60)/Math.max(y1-y0,.01));
-  MAP.fitZ=MAP.z;
+/* ---------- map: MapLibre (open source) with free OpenFreeMap street tiles ---------- */
+const MAP_STYLE='https://tiles.openfreemap.org/styles/positron';
+const BAY_BOUNDS=[[-122.55,37.15],[-121.7,37.9]];
+let ML=null,mlReady=false,mlFitted=false;
+const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#888';
+function mapFeatures(){
+  const top=state.mapFilter==='top',feats=[];
+  const add=(key,p,ghost)=>{const m=meta(key);if(!isFinite(m.lat)||!isFinite(m.lng))return;
+    feats.push({type:'Feature',geometry:{type:'Point',coordinates:[m.lng,m.lat]},
+      properties:{key,name:m.name,ghost:ghost?1:0,score:p?p.score.toFixed(2):'',cls:p?scoreCls(p.score):'ghost',mine:p&&p.mine?1:0,prob:p&&p.problems?1:0,rank:p?p.score:0}})};
+  for(const p of S.list){if(top&&p.score<3.5)continue;add(p.key,p,false)}
+  if(isF()&&!top)for(const p of G.list){if(F.by.has(p.key)&&F.by.get(p.key).n)continue;add(p.key,null,true)}
+  return feats;
 }
-function zoomAt(sx,sy,f){
-  if(!MAP.c)return;
-  const z=Math.min(MAP.fitZ*14,Math.max(MAP.fitZ*.5,MAP.z*f));
-  const wx=MAP.c[0]+(sx-MAP.W/2)/MAP.z, wy=MAP.c[1]+(sy-MAP.H/2)/MAP.z;
-  MAP.z=z;MAP.c=[wx-(sx-MAP.W/2)/z,wy-(sy-MAP.H/2)/z];
-  schedMap();
+function ensureMap(){
+  if(ML)return;
+  if(!window.maplibregl){$('#mapMsg').hidden=false;return}
+  try{
+    ML=new maplibregl.Map({container:'mlmap',style:MAP_STYLE,bounds:BAY_BOUNDS,attributionControl:{compact:true},dragRotate:false,pitchWithRotate:false});
+  }catch(e){ML=null;$('#mapMsg').hidden=false;return}
+  window.__nrMap=ML;ML.touchZoomRotate.disableRotation();
+  ML.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+  ML.addControl(new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true},trackUserLocation:false,showUserLocation:true,fitBoundsOptions:{maxZoom:15}}),'top-right');
+  ML.on('error',e=>{if(e&&e.error&&/style|Failed to fetch/i.test(String(e.error.message||'')))$('#mapMsg').hidden=false});
+  ML.on('load',()=>{
+    /* pins and their text labels use separate copies of the data, so pins still show if the label font can't load */
+    const SRC={type:'geojson',data:{type:'FeatureCollection',features:[]},cluster:true,clusterRadius:38,clusterMaxZoom:13};
+    ML.addSource('places',SRC);ML.addSource('labels',{...SRC,data:{type:'FeatureCollection',features:[]}});
+    const font=['Noto Sans Regular'];
+    ML.addLayer({id:'clusters',type:'circle',source:'places',filter:['has','point_count'],paint:{'circle-radius':['step',['get','point_count'],15,10,19,30,24],'circle-stroke-width':2}});
+    ML.addLayer({id:'cluster-count',type:'symbol',source:'labels',filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],'text-font':font,'text-size':12,'text-allow-overlap':true}});
+    ML.addLayer({id:'ghosts',type:'circle',source:'places',filter:['all',['!',['has','point_count']],['==',['get','ghost'],1]],paint:{'circle-radius':5,'circle-stroke-width':1.5}});
+    ML.addLayer({id:'pins',type:'circle',source:'places',filter:['all',['!',['has','point_count']],['==',['get','ghost'],0]],paint:{'circle-radius':15,'circle-stroke-width':2}});
+    ML.addLayer({id:'pin-mine',type:'circle',source:'places',filter:['all',['!',['has','point_count']],['==',['get','mine'],1]],paint:{'circle-radius':4.5,'circle-translate':[12,-11],'circle-stroke-width':1.5}});
+    ML.addLayer({id:'pin-prob',type:'circle',source:'places',filter:['all',['!',['has','point_count']],['==',['get','prob'],1]],paint:{'circle-radius':4.5,'circle-translate':[-12,-11],'circle-stroke-width':1.5}});
+    ML.addLayer({id:'pin-score',type:'symbol',source:'labels',filter:['all',['!',['has','point_count']],['==',['get','ghost'],0]],layout:{'text-field':['get','score'],'text-font':font,'text-size':11,'text-allow-overlap':true,'symbol-sort-key':['get','rank']}});
+    ML.addLayer({id:'pin-name',type:'symbol',source:'labels',minzoom:14,filter:['!',['has','point_count']],layout:{'text-field':['get','name'],'text-font':font,'text-size':11.5,'text-offset':[0,1.7],'text-anchor':'top','text-optional':true}});
+    const open=e=>{const f=e.features&&e.features[0];if(f)openDetail(f.properties.key)};
+    ML.on('click','pins',open);ML.on('click','ghosts',open);
+    ML.on('click','clusters',async e=>{const f=e.features[0];try{const z=await ML.getSource('places').getClusterExpansionZoom(f.properties.cluster_id);ML.easeTo({center:f.geometry.coordinates,zoom:z})}catch(_){}});
+    for(const id of ['pins','ghosts','clusters']){ML.on('mouseenter',id,()=>ML.getCanvas().style.cursor='pointer');ML.on('mouseleave',id,()=>ML.getCanvas().style.cursor='')}
+    mlReady=true;paintMap();updateMapData(true);
+  });
 }
-function schedMap(){cancelAnimationFrame(MAP.raf);MAP.raf=requestAnimationFrame(drawMap)}
-function line(pts){return pts.map((p,i)=>(i?'L':'M')+scr(p[0],p[1]).map(n=>n.toFixed(1)).join(' ')).join('')}
-function drawMap(){
-  const svg=$('#mapSvg');
-  let g=`<path d="${line(BAY)}Z" fill="var(--water)"/>`;
-  for(const [,pts] of FWY)g+=`<path d="${line(pts)}" fill="none" stroke="var(--road-edge)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`;
-  for(const [,pts] of FWY)g+=`<path d="${line(pts)}" fill="none" stroke="var(--road)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const zr=MAP.z/MAP.fitZ;
-  for(const [name,c] of Object.entries(HOODS)){
-    const city=CITIES.includes(name);
-    if(!city&&zr<1.7)continue;
-    const [x,y]=scr(c[0]-.011,c[1]);
-    g+=`<text class="${city?'city':'hood'}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle">${esc(name)}</text>`;
+function paintMap(){
+  if(!mlReady)return;
+  const acc=cssVar('--accent'),ink=cssVar('--accent-ink'),sur=cssVar('--surface'),mut=cssVar('--muted'),t0=cssVar('--t0'),t4=cssVar('--t4'),fg=cssVar('--ink');
+  const set=(l,k,v)=>{try{ML.setPaintProperty(l,k,v)}catch(_){}};
+  set('clusters','circle-color',acc);set('clusters','circle-stroke-color',sur);set('cluster-count','text-color',ink);
+  set('ghosts','circle-color',sur);set('ghosts','circle-stroke-color',mut);
+  set('pins','circle-color',['match',['get','cls'],'hi',acc,sur]);
+  set('pins','circle-stroke-color',['match',['get','cls'],'hi',sur,'mid',acc,mut]);
+  set('pin-score','text-color',['match',['get','cls'],'hi',ink,'mid',acc,mut]);
+  set('pin-mine','circle-color',t4);set('pin-mine','circle-stroke-color',sur);
+  set('pin-prob','circle-color',t0);set('pin-prob','circle-stroke-color',sur);
+  set('pin-name','text-color',fg);set('pin-name','text-halo-color','#ffffff');set('pin-name','text-halo-width',1.5);
+}
+function updateMapData(refit){
+  if(!mlReady)return;
+  const feats=mapFeatures();
+  const fc={type:'FeatureCollection',features:feats};
+  ML.getSource('places').setData(fc);ML.getSource('labels').setData(fc);
+  if(refit||!mlFitted){
+    if(feats.length){const b=new maplibregl.LngLatBounds();feats.forEach(f=>b.extend(f.geometry.coordinates));ML.fitBounds(b,{padding:50,maxZoom:14,duration:refit&&mlFitted?600:0})}
+    else ML.fitBounds(BAY_BOUNDS,{duration:0});
+    mlFitted=true;
   }
-  if(zr<1.7){const [x,y]=scr(37.318,-121.885);g+=`<text class="city" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle">San Jose</text>`}
-  for(const [num,pts,i] of FWY){const [x,y]=scr(pts[i][0],pts[i][1]);const w=num.length*6+8;g+=`<g class="shield" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><rect x="${-w/2}" y="-7.5" width="${w}" height="15" rx="4"/><text y="3.2" text-anchor="middle">${num}</text></g>`}
-  // pins
-  const top=state.mapFilter==='top', items=[];
-  for(const p of S.list){if(top&&p.score<3.5)continue;const m=meta(p.key);if(isFinite(m.lat))items.push({p,m})}
-  if(isF()&&!top)for(const p of G.list){if(F.by.has(p.key)&&F.by.get(p.key).n)continue;const m=meta(p.key);if(isFinite(m.lat))items.push({p:null,m,key:p.key})}
-  items.sort((a,b)=>(a.p?a.p.score:0)-(b.p?b.p.score:0));
-  const names=zr>=2.2;
-  for(const it of items){
-    const [x,y]=scr(it.m.lat,it.m.lng);
-    if(x<-60||y<-30||x>MAP.W+60||y>MAP.H+30)continue;
-    const key=it.p?it.p.key:it.key, label=`${it.m.name}${it.p?', '+it.p.score.toFixed(2):', no friend ratings'}`;
-    g+=`<g class="pin ${it.p?scoreCls(it.p.score):'ghost'}" data-open="${esc(key)}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})" tabindex="0" role="button" aria-label="${esc(label)}">`;
-    if(it.p){
-      g+=`<rect x="-20" y="-11" width="40" height="22" rx="11"/><text y="4" text-anchor="middle">${it.p.score.toFixed(2)}</text>`;
-      if(it.p.mine)g+=`<circle class="me" cx="18" cy="-9" r="4.5"/>`;
-      if(it.p.problems)g+=`<circle class="prob" cx="-18" cy="-9" r="4.5"/>`;
-      if(names)g+=`<text class="pname" y="25" text-anchor="middle">${esc(it.m.name)}</text>`;
-    }else{
-      g+=`<circle r="4.5"/>`;
-      if(names)g+=`<text class="pname" y="17" text-anchor="middle">${esc(it.m.name)}</text>`;
-    }
-    g+='</g>';
-  }
-  svg.setAttribute('viewBox',`0 0 ${MAP.W} ${MAP.H}`);
-  svg.innerHTML=g;
-  const shown=items.filter(i=>i.p).length, ghosts=items.length-shown;
+  const shown=feats.filter(f=>!f.properties.ghost).length,ghosts=feats.length-shown;
   $('#mapCount').textContent=`${shown} scored${ghosts?` · ${ghosts} without friend ratings`:''} · purple dot: you rated it · red dot: problem reported`;
-  document.querySelectorAll('[data-mapfilter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mapfilter===state.mapFilter?'true':'false'));
 }
 function renderMap(refit){
+  document.querySelectorAll('[data-mapfilter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mapfilter===state.mapFilter?'true':'false'));
   if(current!=='map')return;
-  const r=$('#mapBox').getBoundingClientRect();if(!r.width||!r.height)return;
-  const changed=r.width!==MAP.W||r.height!==MAP.H;
-  MAP.W=r.width;MAP.H=r.height;
-  if(!MAP.c||refit||(changed&&MAP.z===MAP.fitZ))fitMap();
-  bindMap();drawMap();
+  ensureMap();
+  if(ML){ML.resize();if(mlReady){paintMap();updateMapData(refit)}}
 }
-function bindMap(){
-  if(MAP.bound)return;MAP.bound=true;
-  const svg=$('#mapSvg');
-  const rel=e=>{const r=svg.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top]};
-  svg.addEventListener('pointerdown',e=>{MAP.ptrs.set(e.pointerId,rel(e));if(MAP.ptrs.size===1)MAP.moved=0});
-  svg.addEventListener('pointermove',e=>{
-    const prev=MAP.ptrs.get(e.pointerId);if(!prev)return;
-    const cur=rel(e);
-    if(MAP.ptrs.size===1){
-      const dx=cur[0]-prev[0],dy=cur[1]-prev[1];MAP.moved+=Math.abs(dx)+Math.abs(dy);
-      if(MAP.moved>6){try{svg.setPointerCapture(e.pointerId)}catch(_){}
-        MAP.c=[MAP.c[0]-dx/MAP.z,MAP.c[1]-dy/MAP.z];schedMap()}
-    }else if(MAP.ptrs.size===2){
-      const other=[...MAP.ptrs.entries()].find(([id])=>id!==e.pointerId)[1];
-      const d0=Math.hypot(prev[0]-other[0],prev[1]-other[1]),d1=Math.hypot(cur[0]-other[0],cur[1]-other[1]);
-      MAP.moved+=20;try{svg.setPointerCapture(e.pointerId)}catch(_){}
-      if(d0>0)zoomAt((cur[0]+other[0])/2,(cur[1]+other[1])/2,d1/d0);
-    }
-    MAP.ptrs.set(e.pointerId,cur);
-  });
-  const up=e=>MAP.ptrs.delete(e.pointerId);
-  svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
-  svg.addEventListener('click',e=>{if(MAP.moved>6){e.stopPropagation();e.preventDefault()}},true);
-  svg.addEventListener('wheel',e=>{e.preventDefault();const [x,y]=rel(e);zoomAt(x,y,Math.exp(-e.deltaY*.0018))},{passive:false});
-}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>paintMap());
 
 /* ---------- logic ---------- */
 const DIALS=[
@@ -1787,7 +1742,6 @@ document.addEventListener('click',e=>{
   const c=t.dataset.cmd;
   if(c&&c[0]==='m'&&c!=='menu')return menuCmd(c);
   if(c==='menu')return openMenu(t.dataset.visit);
-  if(c==='zin'||c==='zout'){zoomAt(MAP.W/2,MAP.H/2,c==='zin'?1.6:1/1.6);return}
   if(c==='zfit'){renderMap(true);return}
   if(t.dataset.mode){state.mode=t.dataset.mode;save();refresh();return}
   if(t.dataset.follow){
@@ -1877,7 +1831,6 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&!$('#acct').hidden)return closeAcct();
   if(e.key==='Escape'&&!$('#menu').hidden)return closeMenu();
   if(e.key==='Escape'&&!$('#sheet').hidden)return closeDetail();
-  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('.pin[data-open]')){e.preventDefault();return openDetail(e.target.dataset.open)}
   if(current!=='rate'||!$('#sheet').hidden||!$('#menu').hidden||!$('#acct').hidden||e.target.closest('input,textarea,select,[contenteditable]'))return;
   const m={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'}[e.key];
   if(m){e.preventDefault();swipeTop(m)}
