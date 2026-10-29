@@ -793,7 +793,10 @@ function compute(only){
   }
   const m=gw?gx/gw:2;
   const list=[...by.values()].filter(p=>p.n>0);
-  for(const p of list){p.wavg=p.sx/p.sw;p.raw=(P.prior*m+p.sx)/(P.prior+p.sw)}
+  /* Age decides how much each rating counts against the place's other ratings, never how good the place looks:
+     quality is the age-weighted average of its own ratings, and the pull toward the town average depends on how
+     many ratings it has (one lucky rating can't top the chart), not on how old they are. */
+  for(const p of list){p.wavg=p.sx/p.sw;p.raw=(P.prior*m+p.n*p.wavg)/(P.prior+p.n)}
   const N=list.length||1;
   const mu=list.reduce((a,p)=>a+p.raw,0)/N;
   const sd=Math.sqrt(list.reduce((a,p)=>a+(p.raw-mu)**2,0)/N);
