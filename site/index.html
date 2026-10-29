@@ -149,6 +149,12 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .hist .lab{fill:var(--ink);font:600 10px var(--f-mono)}
 .listhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .rows{list-style:none;margin:0;padding:0}
+.finder{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.finder .frow{display:flex;gap:10px;flex-wrap:wrap}
+.finder label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--muted);flex:1 1 140px;min-width:0}
+.finder select,.finder input{font:600 15px var(--f-body);padding:9px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-width:0;width:100%}
+.finder select:focus,.finder input:focus{outline:none;border-color:var(--accent)}
+.finder .fine{margin:0}
 .row{appearance:none;width:100%;display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 2px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
 .rank{font:500 13px var(--f-mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
 .rmain{min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -438,7 +444,7 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     <section class="view gutter" id="v-rankings" aria-label="Rankings" hidden>
       <div class="rankhead">
         <div>
-          <p class="eyebrow">San Jose · last <span class="win">90</span> days</p>
+          <p class="eyebrow"><span id="rankWhere">Near you</span> · last <span class="win">180</span> days</p>
           <h1 class="h1">Rankings</h1>
         </div>
         <div class="modes" role="group" aria-label="Whose ratings to score">
@@ -447,13 +453,22 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         </div>
       </div>
       <p class="lede" id="rankLede"></p>
-      <div class="panel hist">
-        <div class="listhead"><h2 class="h2">The curve</h2><span class="fine">bars = places · line = target bell curve</span></div>
-        <div id="hist"></div>
+      <div class="finder" id="finder">
+        <div class="frow">
+          <label for="fCat">Category<select id="fCat"></select></label>
+          <label for="fDist">Distance<select id="fDist"><option value="1">Within 1 mi</option><option value="3">Within 3 mi</option><option value="10">Within 10 mi</option><option value="25">Within 25 mi</option><option value="0">Anywhere</option></select></label>
+        </div>
+        <div class="frow">
+          <label for="fFrom">From<select id="fFrom"><option value="me">Where I am</option><option value="zip">A ZIP code</option></select></label>
+          <label for="fZip" id="fZipWrap" hidden>ZIP code<input id="fZip" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="e.g. 94110"></label>
+          <label for="fSort">Sort<select id="fSort"><option value="best">Best score</option><option value="near">Closest</option></select></label>
+        </div>
+        <input id="fName" type="search" autocomplete="off" placeholder="Search by name" aria-label="Search by name">
+        <p class="fine" id="fNote"></p>
       </div>
       <div>
         <div class="listhead">
-          <h2 class="h2">All places</h2>
+          <h2 class="h2">Places</h2>
           <div class="seg" role="group" aria-label="Filter">
             <button data-filter="all" aria-pressed="true">Everyone</button>
             <button data-filter="mine" aria-pressed="false">Rated by me</button>
@@ -461,12 +476,16 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         </div>
         <ul class="rows" id="rankList"></ul>
       </div>
+      <div class="panel hist">
+        <div class="listhead"><h2 class="h2">The curve</h2><span class="fine">bars = places · line = target bell curve</span></div>
+        <div id="hist"></div>
+      </div>
     </section>
 
     <section class="view gutter" id="v-map" aria-label="Map" hidden>
       <div class="rankhead">
         <div>
-          <p class="eyebrow">San Jose · last <span class="win">90</span> days</p>
+          <p class="eyebrow">Rated places · last <span class="win">180</span> days</p>
           <h1 class="h1">Map</h1>
         </div>
         <div class="modes" role="group" aria-label="Whose ratings to score">
@@ -688,7 +707,7 @@ function sampleVisits(){
   const S=[['r:kura',2,19,30,75],['r:birria',4,13,10,45],['r:nonna',6,20,0,95],['g:sample-1',8,18,40,60],['r:pho',11,12,15,50],['r:copper',15,19,0,80],['r:ramen',18,12,30,40],['r:saffron',23,19,15,70],['r:ondo',27,20,0,105]];
   return S.map(([key,d,h,mi,dur])=>{const t=new Date(NOW-d*DAY);t.setHours(h,mi,0,0);const start=t.getTime();return {id:key+'@'+start,key,start,end:start+dur*6e4,source:'sample'}});
 }
-function fresh(){return {v:1,seed:7,params:{...DEFAULTS},visits:[],tplaces:{},myReviews:[],tokens:1,sinceToken:0,hidden:[],names:{},undo:[],importInfo:null,mode:'global',friends:[],drafts:{},skipped:{},dismissed:[],mapFilter:'all',demo:false,mealOnly:true,allow:[],bayOnly:true}}
+function fresh(){return {v:1,seed:7,params:{...DEFAULTS},visits:[],tplaces:{},myReviews:[],tokens:1,sinceToken:0,hidden:[],names:{},undo:[],importInfo:null,mode:'global',friends:[],drafts:{},skipped:{},dismissed:[],mapFilter:'all',demo:false,mealOnly:true,allow:[],bayOnly:true,find:{cat:'all',dist:3,from:'me',zip:'',sort:'best',name:''}}}
 function load(){try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.v===1)return s}catch(e){}return null}
 function save(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
 /* ---------- moving from the old Netlify address ----------
@@ -719,6 +738,7 @@ if(MOVE_TO){
   setTimeout(go,1200);
 }
 let state=load()||fresh();
+if(!state.find)state.find={cat:'all',dist:3,from:'me',zip:'',sort:'best',name:''};
 const base=fresh();
 for(const k of Object.keys(base)) if(state[k]===undefined) state[k]=base[k];
 state.params={...DEFAULTS};
@@ -1218,10 +1238,41 @@ function histSVG(list){
 function trendHTML(p){if(Math.abs(p.trend)<.6)return '';return p.trend>0?' · <span class="trend up">▲ rising</span>':' · <span class="trend down">▼ falling</span>'}
 const isF=()=>state.mode==='friends';
 function nPeople(p){const n=p.people.size;if(!isF())return n+(n===1?' person':' people');const f=[...p.people].filter(u=>u!=='me').length;return p.people.has('me')?(f?`You + ${f} friend${f===1?'':'s'}`:'Only you'):`${f} friend${f===1?'':'s'}`}
+/* ---------- find places: category, distance from you or a ZIP code, best or closest ---------- */
+const CATS=[['Coffee & cafés',/coffee|caf[eé]|espresso|tea ?(house|room|shop)|bubble tea|boba|juice|smoothie/],['Bakeries & desserts',/bakery|dessert|donut|doughnut|ice cream|gelato|frozen yogurt|pastry|patisserie|cupcake|creperie|chocolate|candy/],
+  ['Pizza',/pizz/],['Burgers',/burger/],['Mexican',/mexican|taco|taqueria|burrito|tex-mex|tamal|cantina/],['Japanese & sushi',/japanese|sushi|ramen|izakaya|udon|teriyaki|poke|tonkatsu/],
+  ['Chinese',/chinese|dim sum|dumpling|szechuan|sichuan|cantonese|hot pot|taiwanese|noodle house/],['Vietnamese & pho',/vietnam|\bpho\b|banh mi/],['Thai',/\bthai\b/],['Korean',/korean/],
+  ['Indian',/indian|curry|nepal|pakistan|tandoor/],['Italian',/italian|pasta|trattoria|osteria/],['Sandwiches & delis',/sandwich|\bdeli\b|delicatessen|sub shop/],
+  ['Breakfast & brunch',/breakfast|brunch|diner|pancake|waffle/],['Seafood',/seafood|fish|oyster|crab|lobster/],['Bars & breweries',/\bbar\b|\bpub\b|brew|wine|winery|cocktail|tavern|lounge|taproom|beer|saloon|spirits/]];
+function catOf(m){const t=((m.cuisine||'')+' '+(m.name||'')).toLowerCase();for(const [c,rx] of CATS)if(rx.test(t))return c;return 'Everything else'}
+let findPos=null,findAsked=false,ZIPS=null,zipP=null;
+const loadZips=()=>zipP||(zipP=fetch('places/zips.json').then(r=>r.ok?r.json():null).then(j=>(ZIPS=j&&j.z)||null).catch(()=>{zipP=null;return null}));
+function findCenter(){
+  const f=state.find;
+  if(f.from==='zip'){if(!/^\d{5}$/.test(f.zip||''))return {why:'Type a 5-digit ZIP code.'};if(!ZIPS){loadZips().then(z=>{if(z)renderRank()});return {why:'Loading ZIP codes…'}}const z=ZIPS[f.zip];return z?{lat:z[0],lng:z[1],label:'ZIP '+f.zip}:{why:'That ZIP code isn’t in CA, OR, WA or NV.'}}
+  if(findPos)return {...findPos,label:'you'};
+  if(!findAsked&&current==='rankings'&&navigator.geolocation){findAsked=true;
+    navigator.geolocation.getCurrentPosition(p=>{findPos={lat:p.coords.latitude,lng:p.coords.longitude};renderRank()},()=>renderRank(),{enableHighAccuracy:false,timeout:12000,maximumAge:300000});
+    return {why:'Finding where you are…'}}
+  let r=avRecent()[0];
+  if(!r){const last=state.myReviews.slice().sort((a,b)=>b.ts-a.ts).map(x=>meta(x.key)).find(m=>isFinite(m.lat));if(last)r={lat:last.lat,lng:last.lng}}
+  return r?{...r,label:'your most recent visit',fallback:true}:{why:'Turn on location or use a ZIP code to search by distance.'};
+}
+const miles=d=>d/1609.34;
+function renderFinder(L){
+  const f=state.find,cats={};
+  for(const p of L){const c=catOf(meta(p.key));cats[c]=(cats[c]||0)+1}
+  const opts=[['all',`All categories (${L.length})`]].concat(CATS.map(c=>c[0]).concat(['Everything else']).filter(c=>cats[c]).map(c=>[c,`${c} (${cats[c]})`]));
+  if(f.cat!=='all'&&!cats[f.cat])opts.push([f.cat,`${f.cat} (0)`]);
+  $('#fCat').innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}"${v===f.cat?' selected':''}>${esc(l)}</option>`).join('');
+  $('#fDist').value=String(f.dist);$('#fFrom').value=f.from;$('#fSort').value=f.sort;$('#fZipWrap').hidden=f.from!=='zip';
+  if(document.activeElement!==$('#fZip'))$('#fZip').value=f.zip||'';
+}
 function rowHTML(p){
   const m=meta(p.key), o=(isF()?G:F).by.get(p.key);
   const alt=o&&o.n?`${isF()?'Global':'Friends'} ${o.score.toFixed(2)}`:`${isF()?'Global':'Friends'} –`;
-  return `<li><button class="row" data-open="${esc(p.key)}"><span class="rank">${p.rank}</span><span class="rmain"><span class="rname"><span class="nm">${esc(m.name)}</span>${p.mine?`<span class="youchip">You: ${TIERS[p.mine.tier].label}</span>`:''}</span><span class="rsub">${esc(m.tl?m.sub:m.hood+' · '+m.cuisine)} · ${nPeople(p)}${p.problems?` · <span class="probtxt">${p.problems} problem${p.problems===1?'':'s'}</span>`:''}${trendHTML(p)}</span>${distHTML(p)}</span><span class="rs"><span class="score ${scoreCls(p.score)}">${p.score.toFixed(2)}</span><span class="alt">${alt}</span></span></button></li>`;
+  const dd=isFinite(p._d)?` · ${miles(p._d)<9.5?miles(p._d).toFixed(1):Math.round(miles(p._d))} mi`:'';
+  return `<li><button class="row" data-open="${esc(p.key)}"><span class="rank">${p.rank}</span><span class="rmain"><span class="rname"><span class="nm">${esc(m.name)}</span>${p.mine?`<span class="youchip">You: ${TIERS[p.mine.tier].label}</span>`:''}</span><span class="rsub">${esc(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.hood+' · '+m.cuisine)}${dd} · ${nPeople(p)} · ${p.n} rating${p.n===1?'':'s'}${p.problems?` · <span class="probtxt">${p.problems} problem${p.problems===1?'':'s'}</span>`:''}${trendHTML(p)}</span>${distHTML(p)}</span><span class="rs"><span class="score ${scoreCls(p.score)}">${p.score.toFixed(2)}</span><span class="alt">${alt}</span></span></button></li>`;
 }
 function renderRank(){
   const L=S.list, P=state.params, top=L.filter(p=>p.score>=3.5).length;
@@ -1233,8 +1284,18 @@ function renderRank(){
     :`Your own places, curved against each other: a 3.00 is your normal, higher means better than your usual. ${L.length} places from ${S.active} ratings.`;
   if(!L.length){$('#hist').innerHTML='<p class="fine">The curve appears once you’ve rated a few places.</p>';$('#rankList').innerHTML=`<li class="emptyrow">Nothing rated in the last ${P.window} days yet. Import your Timeline and swipe a few visits on the Rate tab.</li>`;return}
   $('#hist').innerHTML=histSVG(L);
-  const shown=rankFilter==='mine'?L.filter(p=>p.mine):L;
-  $('#rankList').innerHTML=shown.length?shown.map(rowHTML).join(''):`<li class="emptyrow">You haven’t rated anything in the last ${P.window} days. Swipe a few visits on the Rate tab.</li>`;
+  renderFinder(L);
+  const f=state.find,c=f.dist?findCenter():{label:null};
+  let shown=rankFilter==='mine'?L.filter(p=>p.mine):L.slice();
+  if(f.cat!=='all')shown=shown.filter(p=>catOf(meta(p.key))===f.cat);
+  const q=(f.name||'').trim().toLowerCase();if(q)shown=shown.filter(p=>meta(p.key).name.toLowerCase().includes(q));
+  for(const p of shown){const m=meta(p.key);p._d=c&&isFinite(c.lat)&&isFinite(m.lat)?metersBetween(c,m):NaN}
+  if(f.dist&&c&&isFinite(c.lat))shown=shown.filter(p=>isFinite(p._d)&&miles(p._d)<=f.dist);
+  else if(f.dist&&f.from==='zip')shown=[];                 /* no usable ZIP yet: show nothing rather than everything */
+  if(f.sort==='near')shown.sort((a,b)=>(isFinite(a._d)?a._d:1e12)-(isFinite(b._d)?b._d:1e12));
+  $('#rankWhere').textContent=!f.dist?'Everywhere':c&&c.label?(c.label==='you'?'Near you':c.fallback?'Near your last visit':'Near '+c.label):f.from==='zip'?'By ZIP code':'Near you';
+  $('#fNote').textContent=!f.dist?`${shown.length} place${shown.length===1?'':'s'}, any distance.`:c&&c.why?c.why:`${shown.length} place${shown.length===1?'':'s'} within ${f.dist} mi of ${c.label}${c.fallback?' (location is off)':''}.`;
+  $('#rankList').innerHTML=shown.length?shown.map(rowHTML).join(''):`<li class="emptyrow">${L.length?'No rated places match. Try a wider distance or another category.':`Nothing rated in the last ${P.window} days yet.`}</li>`;
   document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===rankFilter?'true':'false'));
 }
 
@@ -1992,6 +2053,7 @@ function go(t){
   document.querySelectorAll('[data-tab]').forEach(b=>{if(b.dataset.tab===t)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   $('#main').scrollTop=0;
   if(t==='map')requestAnimationFrame(()=>renderMap());
+  if(t==='rankings'&&S)renderRank();
   if(!authUrlPending)try{history.replaceState(null,'','#'+t)}catch(e){}
 }
 /* after a swipe: rebuild scores, rankings, map and settings once swiping pauses, leaving the deck alone */
@@ -2445,7 +2507,14 @@ document.addEventListener('click',e=>{
   }
 });
 let dialRaf=0;
+document.addEventListener('change',e=>{
+  const id=e.target.id,f=state.find;if(!f)return;
+  if(id==='fCat')f.cat=e.target.value;else if(id==='fDist')f.dist=+e.target.value;else if(id==='fFrom'){f.from=e.target.value;if(f.from==='zip'){loadZips();setTimeout(()=>{const z=$('#fZip');if(z)z.focus()},0)}}else if(id==='fSort')f.sort=e.target.value;else return;
+  save();renderRank();
+});
 document.addEventListener('input',e=>{
+  if(e.target.id==='fName'&&state.find){state.find.name=e.target.value;renderRank();return}
+  if(e.target.id==='fZip'&&state.find){const z=e.target.value.replace(/\D/g,'').slice(0,5);state.find.zip=z;save();if(z.length===5||!z)renderRank();return}
   if(e.target.id==='cmtInput'){$('#cmtCount').textContent=e.target.value.length+'/140';return}
 });
 $('#bayOnly').addEventListener('change',e=>{state.bayOnly=e.target.checked;save();refresh();toast(state.bayOnly?'Stops outside CA, OR, WA and NV are hidden':'Stops everywhere are shown')});
