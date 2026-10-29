@@ -14,12 +14,12 @@ concurrency:
   cancel-in-progress: true
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       KEY_PW: ${{ secrets.APK_KEY_PASSWORD }}
       VERSION_CODE: ${{ github.run_number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Pick dev or live settings
         run: |
           if [ "$GITHUB_REF_NAME" = "main" ]; then
@@ -33,11 +33,11 @@ jobs:
             echo "::error title=Missing secret::Add the APK_KEY_PASSWORD secret: GitHub repo → Settings → Secrets and variables → Actions → New repository secret."
             exit 1
           fi
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: Build the APK
