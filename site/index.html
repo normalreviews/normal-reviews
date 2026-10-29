@@ -529,7 +529,7 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <h2 class="h2">Automatic visit detection</h2>
         <p class="status" id="gpsStatus"></p>
         <div class="btns"><button class="btn" id="gpsBtn" data-cmd="gps">Turn on</button></div>
-        <p class="fine">When you stay somewhere 20+ minutes, your phone checks it against the restaurant map. Restaurant visits become cards; every other stop is forgotten right away. No location history is kept on the phone or sent anywhere. Android shows a small notification while this is on. It uses some battery; turn it off anytime.</p>
+        <p class="fine">When you stay somewhere 20+ minutes, your phone checks it against the restaurant map. Restaurant visits become cards; every other stop is forgotten right away. When 5 visits are waiting, you get a reminder (at most once a day). No location history is kept on the phone or sent anywhere. Android shows a small notification while this is on. It uses some battery; turn it off anytime.</p>
       </div>
 
       <div class="panel">
@@ -705,8 +705,8 @@ let S=null,G=null,F=null,openKey=null,rankFilter='all';
 /* ---------- place metadata ---------- */
 function meta(key){
   if(key.startsWith('r:')){const p=PMAP[key.slice(2)];if(p)return {name:p.name,sub:p.hood+' · '+p.cuisine,hood:p.hood,cuisine:p.cuisine,hue:p.hue,tl:false,named:true,note:TRENDS[p.id]&&TRENDS[p.id].note,lat:p.lat,lng:p.lng}}
-  const tp=state.tplaces[key]||remotePlaces[key]||{};
-  const name=state.names[key]||tp.name;
+  const lk=localKey(key),tp=state.tplaces[lk]||remotePlaces[key]||{};
+  const name=state.names[lk]||state.names[key]||tp.name;
   const coords=isFinite(tp.lat)?tp.lat.toFixed(4)+', '+tp.lng.toFixed(4):'';
   const src=tp.manual?'Added by you':tp.gps?'Found by your phone':'From your Timeline';
   return {name:name||'Unnamed stop',sub:tp.addr?tp.addr.split(',').slice(0,2).join(','):name?src:(coords||src),hood:'',cuisine:tp.label||'Timeline stop',hue:hash(key)%360,tl:true,named:!!name,coords,tp,lat:tp.lat,lng:tp.lng};
@@ -720,9 +720,20 @@ function mapsUrl(tp){
 }
 
 /* ---------- scoring ---------- */
+/* ---------- one shared ID per restaurant ----------
+   A restaurant on the map has the same ID for everyone ("p:" + its map position), however a visit to it was found:
+   a Timeline place, the phone, or added by hand. Places the map doesn't know keep their own ID. */
+const pkey=p=>'p:'+Math.round(p.lat*1e5)+','+Math.round(p.lng*1e5);
+function canon(k){const tp=state.tplaces[k];return tp&&tp.ref?tp.ref:k}
+let ALIAS=new Map();
+function rebuildAlias(){ALIAS=new Map();for(const k in state.tplaces){const tp=state.tplaces[k];if(tp&&tp.ref&&!ALIAS.has(tp.ref))ALIAS.set(tp.ref,k)}}
+const localKey=k=>state.tplaces[k]?k:(ALIAS.get(k)||k);
+const simName=(a,b)=>{a=a.toLowerCase().replace(/[^a-z0-9]/g,'');b=b.toLowerCase().replace(/[^a-z0-9]/g,'');return !!a&&!!b&&(a===b||a.startsWith(b.slice(0,6))||b.startsWith(a.slice(0,6)))};
+function findRef(tp,name){if(!name||!isFinite(tp.lat))return null;const c=nearby(tp.lat,tp.lng,60).find(p=>simName(p.n,name));return c?pkey(c):null}
 function compute(only){
+  rebuildAlias();
   const P=state.params, lam=Math.LN2/P.halfLife, hid=new Set(state.hidden);
-  const mine=state.myReviews.filter(r=>!hid.has(r.key)).map(r=>({id:r.id,user:'me',key:r.key,tier:r.tier,ts:r.ts,comment:r.comment||null,photo:r.photo||null,photoPath:r.photoPath||null,reasons:r.reasons||null}));
+  const mine=state.myReviews.filter(r=>!hid.has(r.key)).map(r=>({id:r.id,user:'me',key:canon(r.key),tier:r.tier,ts:r.ts,comment:r.comment||null,photo:r.photo||null,photoPath:r.photoPath||null,reasons:r.reasons||null}));
   const all=(only?world.reviews.filter(r=>only.has(r.user)):world.reviews).concat(mine);
   const by=new Map();let gw=0,gx=0,active=0,expired=0;
   for(const r of all){
@@ -791,9 +802,10 @@ async function shrink(file){
   }finally{URL.revokeObjectURL(url)}
 }
 function cover(key){
-  const rs=state.myReviews.filter(r=>r.key===key&&r.photo&&PH.mem.has(r.photo)).sort((a,b)=>b.ts-a.ts);
+  const ck=canon(key),same=r=>r.key===key||canon(r.key)===ck;
+  const rs=state.myReviews.filter(r=>same(r)&&r.photo&&PH.mem.has(r.photo)).sort((a,b)=>b.ts-a.ts);
   if(rs.length)return PH.mem.get(rs[0].photo);
-  const any=state.myReviews.concat(world.reviews).filter(r=>r.key===key&&r.photoPath&&photoUrls[r.photoPath]).sort((a,b)=>b.ts-a.ts)[0];
+  const any=state.myReviews.concat(world.reviews).filter(r=>same(r)&&r.photoPath&&photoUrls[r.photoPath]).sort((a,b)=>b.ts-a.ts)[0];
   return any?photoUrls[any.photoPath]:null;
 }
 const ICON={
@@ -872,6 +884,7 @@ function renderHeader(){
 const dayOf=t=>new Date(t).toDateString();
 const mealName=t=>{const h=new Date(t).getHours();return h<11?'Breakfast':h<15?'Lunch':h<17?'Coffee or snack':h<22?'Dinner':'Late night'};
 function placeIdent(k){
+  const c=canon(k);if(c.startsWith('p:'))return c;
   const tp=state.tplaces[k],n=(state.names[k]||tp&&tp.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   return n&&tp&&isFinite(tp.lat)?'n:'+n+'@'+Math.round(tp.lat*200)+','+Math.round(tp.lng*160):n&&tp?'n:'+n:k;
 }
@@ -890,7 +903,7 @@ function deckVisits(){
   return out;
 }
 function cardHTML(v){
-  const m=meta(v.key), P=state.params, p=G.by.get(v.key), fs=new Set(state.friends);
+  const m=meta(v.key), P=state.params, p=G.by.get(canon(v.key)), fs=new Set(state.friends);
   const ppl=p?[...p.people].filter(u=>u!=='me'):[];
   const fr=ppl.filter(u=>fs.has(u)).length, others=ppl.length-fr;
   const mono=m.tl&&!m.named?'?':m.name.replace(/^The\s+/,'')[0];
@@ -1121,9 +1134,11 @@ function startNaming(btn){
 document.addEventListener('submit',e=>{
   const f=e.target.closest('.namer');if(!f)return;
   e.preventDefault();
-  const v=f.querySelector('input').value.trim();
-  if(v)state.names[f.dataset.key]=v;else delete state.names[f.dataset.key];
-  save();refresh();syncPlace(f.dataset.key);
+  const v=f.querySelector('input').value.trim(),k=localKey(f.dataset.key),tp=state.tplaces[k];
+  if(v)state.names[k]=v;else delete state.names[k];
+  if(tp&&!k.startsWith('p:')){tp.ref=null;tp.refV=0;if(!v)tp.osmV=0;
+    loadTilesFor([tp]).then(()=>{matchPlaces([k]);save();refresh();resync(k)})}
+  save();refresh();resync(k);
   if(!$('#sheet').hidden)openDetail(f.dataset.key);
   toast(v?'Saved '+v:'Name cleared');
 });
@@ -1177,13 +1192,13 @@ function renderRank(){
 /* ---------- detail sheet ---------- */
 let lastFocus=null;
 function openDetail(key){
-  const p=S.by.get(key), m=meta(key), P=state.params, L=S.list;
+  const ck=canon(key),p=S.by.get(ck), m=meta(key), P=state.params, L=S.list;
   const active=p&&p.n>0;
   const sign=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(2);
   const cv=cover(key);
   let html=`<div class="grab"></div>${cv?`<img class="cover" src="${cv}" alt="Your photo of ${esc(m.name)}">`:''}<div class="dhead"><div><p class="eyebrow">${active?`#${p.rank} of ${L.length} · `:''}${esc(m.tl?m.sub:m.hood+' · '+m.cuisine)}</p><h2 class="cname">${esc(m.name)}</h2></div><button class="xbtn" data-cmd="close" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
   if(m.tl){const url=mapsUrl(m.tp);html+=`<div class="btns"><button class="btn" data-cmd="name" data-key="${esc(key)}">${m.named?'Rename':'Name it'}</button>${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open in Maps ↗</a>`:''}</div>`}
-  const box=(X,label,mode)=>{const q=X.by.get(key);const ok=q&&q.n>0;return `<div class="${state.mode===mode?'on':''}"><span class="k">${label}</span><span class="v">${ok?q.score.toFixed(2):'–'}</span><span class="s">${ok?`#${q.rank} of ${X.list.length} · ${q.n} rating${q.n===1?'':'s'}`:'No recent ratings'}</span></div>`};
+  const box=(X,label,mode)=>{const q=X.by.get(ck);const ok=q&&q.n>0;return `<div class="${state.mode===mode?'on':''}"><span class="k">${label}</span><span class="v">${ok?q.score.toFixed(2):'–'}</span><span class="s">${ok?`#${q.rank} of ${X.list.length} · ${q.n} rating${q.n===1?'':'s'}`:'No recent ratings'}</span></div>`};
   html+=`<div class="both">${box(F,'Friends','friends')}${box(G,'Global','global')}</div>`;
   if(active){
     const pct=Math.max(1,Math.ceil(p.rank/L.length*100));
@@ -1461,16 +1476,21 @@ function judge(la,ln,vs,gps){
   if(O&&O.d<=R&&DRINKS.test(O.cat))return {food:'bar',label:O.cat};
   return {food:false,why:O&&O.d<=R?O.cat:`No restaurant within ${R} m`};
 }
-const MATCH_V=5,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
+const MATCH_V=6,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
 function matchPlaces(keys){
   let auto=0,ask=0,skip=0;
   if(!TM)return {auto,ask,skip};
-  const pack=p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d)});
+  const pack=p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d),la:p.lat,ln:p.lng});
   const vsOf=new Map();for(const v of state.visits){let L=vsOf.get(v.key);if(!L)vsOf.set(v.key,L=[]);L.push(v)}
   for(const k of keys){
     const tp=state.tplaces[k];
-    if(!tp||tp.osmV===MATCH_V||state.names[k]||(tp.name&&!tp.osm)||!isFinite(tp.lat)||!covered(tp.lat,tp.lng)||!tilesReady(tp.lat,tp.lng))continue;
-    tp.osmV=MATCH_V;tp.cands=[];tp.alts=[];
+    if(!tp||!isFinite(tp.lat)||!covered(tp.lat,tp.lng)||!tilesReady(tp.lat,tp.lng))continue;
+    if(state.names[k]||(tp.name&&!tp.osm)){            /* named by you or by Google: link it to the same place on the map, if it's there */
+      if(tp.refV!==MATCH_V&&!k.startsWith('p:')){tp.ref=findRef(tp,state.names[k]||tp.name);tp.refV=MATCH_V}
+      continue;
+    }
+    if(tp.osmV===MATCH_V)continue;
+    tp.osmV=MATCH_V;tp.refV=MATCH_V;tp.cands=[];tp.alts=[];if(!k.startsWith('p:'))tp.ref=null;
     if(tp.osm){tp.name=null;tp.label=null;tp.addr=null;tp.osm=false}
     const cl=judge(tp.lat,tp.lng,vsOf.get(k)||[]);
     const rated=state.myReviews.some(r=>r.key===k);
@@ -1482,7 +1502,7 @@ function matchPlaces(keys){
     }
     if(tp.skipWhy&&state.hidden.includes(k)){state.hidden=state.hidden.filter(x=>x!==k)}
     tp.skipWhy=null;
-    if(cl.food===true){const b=cl.best;tp.name=b.n;tp.label=b.l;tp.addr=b.c||null;tp.osm=true;tp.alts=cl.alts.map(pack);auto++}
+    if(cl.food===true){const b=cl.best;tp.name=b.n;tp.label=b.l;tp.addr=b.c||null;tp.osm=true;tp.ref=k.startsWith('p:')?null:pkey(b);tp.alts=cl.alts.map(pack);auto++}
     else if(cl.food==='bar'){tp.label=tp.label||cl.label}
     else{tp.cands=cl.cands.map(pack);ask++}
   }
@@ -1543,18 +1563,32 @@ async function gpsClose(c,leftAt){
   if(cl.food===true){
     const b=cl.best;key='p:'+Math.round(b.lat*1e5)+','+Math.round(b.lng*1e5);
     tp=state.tplaces[key]||(state.tplaces[key]={lat:b.lat,lng:b.lng,name:b.n,label:b.l,addr:b.c||null,osm:true,osmV:MATCH_V,gps:true});
-    if(!state.names[key])tp.alts=cl.alts.map(p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d)}));
+    if(!state.names[key])tp.alts=cl.alts.map(p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d),la:p.lat,ln:p.lng}));
   }else if(cl.food==='ask'||cl.food==='bar'){
     key='c:'+c.lat.toFixed(4)+','+c.lng.toFixed(4);
     tp=state.tplaces[key]||(state.tplaces[key]={lat:c.lat,lng:c.lng,name:null,osmV:MATCH_V,gps:true});
-    if(cl.food==='ask')tp.cands=cl.cands.map(p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d)}));else tp.label=tp.label||cl.label;
+    if(cl.food==='ask')tp.cands=cl.cands.map(p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d),la:p.lat,ln:p.lng}));else tp.label=tp.label||cl.label;
   }else{GPS.skipped=(GPS.skipped||0)+1;gpsSave(GPS);renderGps();return}          /* not a restaurant: forgotten */
   if(state.hidden.includes(key))return;
   const id=key+'@'+start;if(state.visits.some(v=>v.id===id))return;
   state.visits.push({id,key,start,end,source:'gps'});
   GPS.found=(GPS.found||0)+1;GPS.lastFound=end;gpsSave(GPS);
-  save();renderDeck();refreshLater();
+  save();renderDeck();refreshLater();nudgeCheck();
 }
+/* "5 visits waiting" nudge (Android app): once when the deck reaches 5, then at most once a day while it stays there */
+async function nudgeCheck(){
+  if(!NATIVE)return;
+  const n=deckVisits().length;
+  if(n<5){if(GPS.nudged){GPS.nudged=0;gpsSave(GPS)}return}
+  if(GPS.nudged&&Date.now()-GPS.nudged<20*3600e3)return;
+  try{
+    const LN=Capacitor.registerPlugin('LocalNotifications');
+    const p=await LN.checkPermissions();if(p.display!=='granted')return;
+    await LN.schedule({notifications:[{id:5005,title:`${n} visits to rate`,body:'Swipe through them while you still remember the food.'}]});
+    GPS.nudged=Date.now();gpsSave(GPS);
+  }catch(e){console.warn('nudge',e)}
+}
+async function askNotify(){if(!NATIVE)return;try{const LN=Capacitor.registerPlugin('LocalNotifications');const p=await LN.checkPermissions();if(p.display!=='granted')await LN.requestPermissions()}catch(e){}}
 function renderGps(){
   const box=$('#gpsPanel');if(!box)return;
   box.hidden=!NATIVE;if(!NATIVE)return;
@@ -1568,11 +1602,19 @@ function renderGps(){
 async function gpsToggle(){
   if(GPS.on){await gpsStop();if(GPS.cur)delete GPS.cur;GPS.on=false;gpsSave(GPS);renderGps();toast('Visit detection is off. Nothing about where you went is kept.');return}
   const ok=await gpsStart(true);
-  if(ok){GPS.on=true;gpsSave(GPS);renderGps();toast('Visit detection is on. Eat somewhere for 20+ minutes and it shows up here.')}
+  if(ok){GPS.on=true;gpsSave(GPS);renderGps();askNotify();toast('Visit detection is on. Eat somewhere for 20+ minutes and it shows up here.')}
 }
-if(NATIVE&&GPS.on)gpsStart(false);
+if(NATIVE&&GPS.on){gpsStart(false);setTimeout(nudgeCheck,3000)}
 
-/* ---------- add a visit by hand (places the Timeline missed) ---------- */
+/* ---------- add a visit by hand (places the Timeline missed) ----------
+   Hand-added visits aren't verified, so they're capped at 1 for every 10 visits your Timeline or phone found (last 90 days). */
+function manualAllowance(){
+  const cut=NOW-state.params.queueDays*DAY,hid=new Set(state.hidden),dis=new Set(state.dismissed);
+  const vs=state.visits.filter(v=>v.start>=cut&&!dis.has(v.id)&&!hid.has(v.key));
+  const manual=vs.filter(v=>v.source==='manual').length;
+  const verified=new Set(vs.filter(v=>v.source==='timeline'||v.source==='gps').map(visitGroup)).size;
+  return {manual,verified,left:Math.max(0,Math.floor(verified/10)-manual)};
+}
 let avRef=null,avList=[],avT=0;
 function tilesNear(p,r){const s=new Set();for(const a of [-r,0,r])for(const b of [-r*1.25,0,r*1.25])s.add(tileId(p.lat+a,p.lng+b));return [...s]}
 async function avLoadAround(pts,r){await loadManifest();if(!TM)return;const ids=new Set();for(const p of pts)if(covered(p.lat,p.lng))tilesNear(p,r).forEach(i=>ids.add(i));await Promise.all([...ids].slice(0,12).map(loadTile))}
@@ -1583,10 +1625,20 @@ function avRecent(){
 }
 function openAdd(){
   menuVisit=null;avRef=null;
+  const A=manualAllowance();
+  if(A.left<=0){
+    const need=(A.manual+1)*10-A.verified;
+    $('#menuBody').innerHTML=`<div class="grab"></div><div><p class="eyebrow">Add a visit</p><h2 class="h2">${A.verified<10?'Not yet':'You’ve used your hand-added visits'}</h2></div>
+      <p class="fine">Scores here come from visits your Timeline or phone confirmed. You can add 1 visit by hand for every 10 confirmed visits in the last ${state.params.queueDays} days. You have ${A.verified} confirmed and ${A.manual} added by hand.</p>
+      <p class="fine">${need} more confirmed visit${need===1?'':'s'} unlock${need===1?'s':''} the next one. Import your Timeline or turn on visit detection to add more.</p>
+      <button class="btn ghost" data-cmd="avclose" style="align-self:center">OK</button>`;
+    const sh=$('#menu');if(sh.hidden){lastFocus=document.activeElement;sh.hidden=false}
+    return;
+  }
   const d=new Date(),pad=n=>String(n).padStart(2,'0'),iso=x=>x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate());
   const min=new Date(NOW-state.params.queueDays*DAY),h=d.getHours();
   const meal=h<11?'8.5':h<15?'12.5':h<17?'15':h<22?'19':'22';
-  $('#menuBody').innerHTML=`<div class="grab"></div><div><p class="eyebrow">Missing from your Timeline?</p><h2 class="h2">Add a visit</h2></div>
+  $('#menuBody').innerHTML=`<div class="grab"></div><div><p class="eyebrow">Missing from your Timeline? You can add ${A.left} more</p><h2 class="h2">Add a visit</h2></div>
     <div class="addv">
       <div class="avrow"><input id="avq" type="search" enterkeyhint="search" autocomplete="off" placeholder="Restaurant name" aria-label="Restaurant name"><button class="btn" data-cmd="avnear">Near me</button></div>
       <p class="fine" id="avhint">Type a name to search places you’ve been near, or tap Near me.</p>
@@ -1640,6 +1692,7 @@ function avAdd(p){
   state.dismissed=state.dismissed.filter(id=>!inGroup.some(v=>v.id===id));     /* adding it by hand undoes "I didn't visit" */
   const dup=inGroup[0];
   if(dup){dup.pin=Date.now();save();closeMenu();go('rate');renderDeck();toast(`${name} that day is in your deck. It’s on top now.`);return}
+  if(manualAllowance().left<=0){closeMenu();openAdd();return}
   state.visits.push({id:key+'@'+start,key,start,end,source:'manual',pin:Date.now()});
   save();closeMenu();go('rate');renderDeck();refreshLater();toast(`Added ${name}. Swipe to rate it.`);
 }
@@ -1875,16 +1928,26 @@ async function pullShared(force){
     friendsList=ids.map(id=>({id,name:((profs.find(p=>p.id===id)||{}).display_name)||'Friend'}));
     const since=dayStr(NOW-Math.max(state.params.window,state.params.queueDays,90)*DAY);
     const {data:rows,error}=await sb.rpc('global_ratings',{since});if(error)throw error;
+    const legacy=(rows||[]).filter(r=>r.place_key&&!r.place_key.startsWith('p:')&&isFinite(r.place_lat)).map(r=>({lat:r.place_lat,lng:r.place_lng}));
+    if(legacy.length){await loadManifest();const ids=[...new Set(legacy.filter(p=>covered(p.lat,p.lng)).flatMap(p=>tilesAround(p.lat,p.lng)))].slice(0,8);await Promise.all(ids.map(loadTile))}
     buildShared(rows||[]);
     save();refresh();
     signPhotos(rows||[]);
   }catch(err){console.warn(err);toast('Couldn’t load shared ratings: '+friendly(err))}
+}
+/* someone else's rating saved under an older place ID: find the same restaurant on the map by name and location */
+function canonRemote(r){
+  const k=r.place_key;if(!k||k.startsWith('p:'))return k;
+  const c=canon(k);if(c!==k)return c;
+  if(r.place_name&&isFinite(r.place_lat)&&tilesReady(r.place_lat,r.place_lng)){const f=findRef({lat:r.place_lat,lng:r.place_lng},r.place_name);if(f)return f}
+  return k;
 }
 function buildShared(rows){
   const users=friendsList.map(f=>({id:f.id,name:f.name,hue:hash(f.id)%360,bias:0}));
   const reviews=[],ustats={};remotePlaces={};
   for(const r of rows){
     if(r.place_key&&!remotePlaces[r.place_key])remotePlaces[r.place_key]={name:r.place_name||null,label:r.place_label||null,lat:r.place_lat,lng:r.place_lng};
+    const ck=canonRemote(r);if(ck!==r.place_key&&!remotePlaces[ck])remotePlaces[ck]=remotePlaces[r.place_key];
     const ts=new Date(r.visit_day+'T12:00:00').getTime();
     if(me&&r.who===me.id){
       /* bring back your own ratings if this phone lost them (new phone, cleared browser) */
@@ -1894,7 +1957,7 @@ function buildShared(rows){
     }
     const uid=r.who||('anon:'+r.id);
     ustats[uid]={n:r.rater_n,grader:r.rater_grader};
-    reviews.push({id:r.id,user:uid,key:r.place_key,tier:r.tier,ts,comment:r.comment,reasons:r.reasons,photoPath:r.photo_path});
+    reviews.push({id:r.id,user:uid,key:canonRemote(r),tier:r.tier,ts,comment:r.comment,reasons:r.reasons,photoPath:r.photo_path});
   }
   for(const u of users)if(!ustats[u.id])ustats[u.id]={n:0,grader:'Calibrated'};
   world={users,umap:Object.fromEntries(users.map(u=>[u.id,u])),reviews,ustats};
@@ -1921,23 +1984,26 @@ async function pushRating(r){
       r.photoPath=path;photoUrls[path]=PH.mem.get(r.photo);
     }
     const tp=state.tplaces[r.key]||remotePlaces[r.key]||{},m=meta(r.key),rd=x=>isFinite(x)?Math.round(x*1e4)/1e4:null;
-    const row={user_id:me.id,visit_id:r.visitId,place_key:r.key,
+    const pk=canon(r.key);
+    const row={user_id:me.id,visit_id:r.visitId,place_key:pk,
       place_name:m.named?m.name.slice(0,120):null,
       place_label:(m.cuisine&&m.cuisine!=='Timeline stop')?String(m.cuisine).slice(0,80):null,
       place_lat:rd(tp.lat),place_lng:rd(tp.lng),visit_day:dayStr(r.ts),tier:r.tier,
       reasons:r.reasons||null,comment:r.comment?r.comment.slice(0,140):null,photo_path:r.photoPath||null};
     const {data,error}=await sb.from('ratings').upsert(row,{onConflict:'user_id,visit_id'}).select('id').single();
     if(error)throw error;
-    r.synced=true;r.serverId=data.id;return true;
+    r.synced=true;r.pk=pk;r.serverId=data.id;return true;
   }catch(err){console.warn('sync',err);return false}
 }
 async function syncUp(){
   if(!sb||!me)return;
   let n=0,fail=0;
-  for(const r of state.myReviews){if(r.synced||r.key.startsWith('r:'))continue;if(await pushRating(r))n++;else{fail++;break}}
+  for(const r of state.myReviews){if((r.synced&&r.pk===canon(r.key))||r.key.startsWith('r:'))continue;if(await pushRating(r))n++;else{fail++;break}}
   if(n)save();
   if(fail)toast('Some ratings haven’t been shared yet. They’ll retry next time you open the app.');
 }
+/* a place's name or shared ID changed: re-send its ratings */
+function resync(key){let n=0;for(const r of state.myReviews)if(r.key===key&&r.synced){r.synced=false;n++}if(n){save();syncUp()}}
 function syncPlace(key){
   if(!sb||!me||!state.myReviews.some(r=>r.key===key&&r.synced))return;
   const m=meta(key);
@@ -2019,14 +2085,14 @@ document.addEventListener('click',e=>{
       break}
     case 'pickalt':{
       const k=t.dataset.key,tp=state.tplaces[k],c=tp&&tp.alts&&tp.alts[+t.dataset.i];if(!c)break;
-      state.names[k]=c.n;tp.label=c.l;if(c.c)tp.addr=c.c;tp.alts=[];
-      save();refresh();syncPlace(k);toast('Changed to '+c.n);break}
+      state.names[k]=c.n;tp.label=c.l;if(c.c)tp.addr=c.c;tp.alts=[];if(!k.startsWith('p:'))tp.ref=isFinite(c.la)?pkey({lat:c.la,lng:c.ln}):null;tp.refV=MATCH_V;resync(k);
+      save();refresh();toast('Changed to '+c.n);break}
     case 'pick':{
       const k=t.dataset.key,i=+t.dataset.i,tp=state.tplaces[k];if(!tp)break;
       const c=i>=0&&tp.cands&&tp.cands[i];
-      if(c){state.names[k]=c.n;tp.label=tp.label||c.l;if(c.c&&!tp.addr)tp.addr=c.c;toast('Named '+c.n)}
+      if(c){state.names[k]=c.n;tp.label=tp.label||c.l;if(c.c&&!tp.addr)tp.addr=c.c;if(!k.startsWith('p:'))tp.ref=isFinite(c.la)?pkey({lat:c.la,lng:c.ln}):null;tp.refV=MATCH_V;resync(k);toast('Named '+c.n)}
       else toast('Okay. Name it yourself, or tap Not food.');
-      tp.cands=[];save();refresh();syncPlace(k);break}
+      tp.cands=[];save();refresh();break}
     case 'wipe':{
       if(Date.now()-wipeArmed>4000){wipeArmed=Date.now();t.textContent='Tap again to erase everything';setTimeout(()=>{t.textContent='Erase everything'},4000);break}
       wipeArmed=0;t.textContent='Erase everything';
@@ -2082,9 +2148,9 @@ go((location.hash||'').slice(1)||'rate');
 photoInit().then(()=>{if(PH.mem.size)refresh()});
 /* re-check saved stops against the restaurant map (only the areas you've been, and only places not yet checked) */
 loadManifest().then(async m=>{if(!m)return;refresh();
-  const todo=Object.keys(state.tplaces).filter(k=>{const tp=state.tplaces[k];return tp&&tp.osmV!==MATCH_V&&!state.names[k]&&!(tp.name&&!tp.osm)&&covered(tp.lat,tp.lng)});
+  const todo=Object.keys(state.tplaces).filter(k=>{const tp=state.tplaces[k];if(!tp||!covered(tp.lat,tp.lng))return false;const named=state.names[k]||(tp.name&&!tp.osm);return named?tp.refV!==MATCH_V&&!k.startsWith('p:'):tp.osmV!==MATCH_V});
   if(!todo.length)return;await loadTilesFor(todo.map(k=>state.tplaces[k]));
-  const r=matchPlaces(todo);if(r.auto||r.ask||r.skip){save();refresh()}});
+  const r=matchPlaces(todo);save();refresh();if(sb&&me)syncUp()});
 backendInit();
 })();
 </script>
