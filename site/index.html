@@ -671,7 +671,7 @@ function genWorld(seed){
 /* ---------- state ---------- */
 const LS='normal-reviews.v1';
 /* the rules, the same for everyone: full weight for 60 days, then fading to zero at 180; stops of 10+ minutes */
-const DEFAULTS={fullDays:60,window:180,prior:2,spread:0.5,minDwell:10,queueDays:90};
+const DEFAULTS={fullDays:60,window:180,prior:2,spread:0.5,minDwell:10,queueDays:180};
 const DEFAULT_FRIENDS=['u0','u2','u5','u7','u9','u12','u14','u17','u20','u23'];
 function sampleVisits(){
   const S=[['r:kura',2,19,30,75],['r:birria',4,13,10,45],['r:nonna',6,20,0,95],['g:sample-1',8,18,40,60],['r:pho',11,12,15,50],['r:copper',15,19,0,80],['r:ramen',18,12,30,40],['r:saffron',23,19,15,70],['r:ondo',27,20,0,105]];
@@ -1387,7 +1387,8 @@ function renderLogic(){
   $('#bayOnly').checked=!!state.bayOnly;
   $('#stats').innerHTML=`<div><b>${state.myReviews.length}</b><span>your ratings</span></div><div><b>${tl}</b><span>Timeline visits</span></div><div><b>${S.list.length}</b><span>ranked places</span></div><div><b>${S.active}</b><span>active ratings</span></div><div><b>${S.expired}</b><span>expired ratings</span></div><div><b>${world.users.length}</b><span>simulated people</span></div>`;
   const I=state.importInfo;
-  $('#importStatus').innerHTML=I?`Last import ${esc(new Date(I.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}: <b>${I.found}</b> stops kept, ${I.added} new. Skipped ${I.homework} home or work, ${I.short} shorter than ${I.minDwell} min, ${I.old} too old${I.away?`, ${I.away} outside the covered states`:''}${I.off?`, ${I.off} outside meal times`:''}${I.notfood?`, ${I.notfood} not food (hidden)`:''}.${I.enriched?` ${I.named} restaurant names added from Google.`:''}${I.osm?` <b>${I.osmAuto||0}</b> named from the restaurant map${I.osmAsk?`, ${I.osmAsk} need you to pick`:''}.`:''}${I.listOther?` <b>${I.listOther}</b> skipped: no restaurant within 8 m, or a store, gym or other place was closer.`:''}${I.tilesOk===false?' Some map areas didn’t download; they’ll be checked next time you open the app.':''}${I.newest?` Newest visit in the file: ${esc(new Date(I.newest).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}))}.`:''}${I.errs&&I.errs.length?'<br>'+I.errs.map(esc).join('<br>'):''}`:'';
+  $('#importStatus').innerHTML=I?`Last import ${esc(new Date(I.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}: <b>${I.found}</b> stops kept, ${I.added} new. Skipped ${I.homework} home or work, ${I.short} shorter than ${I.minDwell} min, ${I.old} too old${I.away?`, ${I.away} outside the covered states`:''}${I.off?`, ${I.off} outside meal times`:''}${I.notfood?`, ${I.notfood} not food (hidden)`:''}.${I.enriched?` ${I.named} restaurant names added from Google.`:''}${I.rc?` Restaurants: <b>${I.rc.gl}</b> named by Google or shared links, ${I.rc.gonly} by Google only (not on our map yet), ${I.rc.map} from our map${I.rc.mine?`, ${I.rc.mine} named by you`:''}${I.rc.ask?`, ${I.rc.ask} need you to pick`:''}. <b>${I.rc.skip}</b> skipped as not restaurants. <b>${I.rc.cards}</b> have cards to rate; the Match report says why the rest don’t.`
+  :`${I.osm?` <b>${I.osmAuto||0}</b> named from the restaurant map${I.osmAsk?`, ${I.osmAsk} need you to pick`:''}.`:''}${I.listOther?` <b>${I.listOther}</b> skipped: no restaurant within 8 m, or a store, gym or other place was closer.`:''}`}${I.future?` ${I.future} stop${I.future===1?'':'s'} dated in the future ignored.`:''}${I.tilesOk===false?' Some map areas didn’t download; they’ll be checked next time you open the app.':''}${I.newest?` Newest visit in the file: ${esc(new Date(I.newest).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}))}.`:''}${I.errs&&I.errs.length?'<br>'+I.errs.map(esc).join('<br>'):''}`:'';
 }
 
 /* ---------- import ---------- */
@@ -1430,7 +1431,8 @@ async function loadTilesFor(pts){
 const tilesReady=(la,ln)=>tilesAround(la,ln).every(id=>TR.has(id));
 function scan(G,la,ln,r,fn){
   const i=Math.floor(la/CLAT),j=Math.floor(ln/CLNG),kx=Math.cos(la*Math.PI/180)*111320;
-  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const L=G.get((i+a)+':'+(j+b));if(!L)continue;
+  const di=Math.max(1,Math.ceil(r/(CLAT*110540))),dj=Math.max(1,Math.ceil(r/(CLNG*kx)));
+  for(let a=-di;a<=di;a++)for(let b=-dj;b<=dj;b++){const L=G.get((i+a)+':'+(j+b));if(!L)continue;
     for(const p of L){const d=Math.hypot((p.lat-la)*110540,(p.lng-ln)*kx);if(d<=r)fn(p,d)}}
 }
 function nearby(la,ln,r){const out=[];if(isFinite(la)&&isFinite(ln))scan(FG,la,ln,r,(p,d)=>out.push({...p,d}));return out.sort((x,y)=>x.d-y.d)}
@@ -1503,7 +1505,7 @@ function matchPlaces(keys){
    our map, we use the link. If not, the phone asks Google once for the name and type, finds that restaurant on our map and
    shares the link (the place ID and our map listing, nothing else, no user attached). Google's names are shown but never
    saved, per Google's terms; place IDs may be kept. Links are downloaded per area, so our server never learns your stops. */
-const GCL='normal-reviews.gcache',LKS='normal-reviews.links',GDAILY=150,GLINK_RADIUS=120;
+const GCL='normal-reviews.gcache',LKS='normal-reviews.links',GDAILY=300,GLINK_RADIUS=120;
 const GKEY=(window.NR_CONFIG||{}).places||'';
 const jget=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
 let GC=jget(GCL,{});GC.neg=GC.neg||{};GC.miss=GC.miss||{};                        /* place IDs that aren't restaurants or are closed; today's lookups */
@@ -1528,8 +1530,8 @@ async function loadLinks(tiles){
 function gLeft(){const d=new Date().toDateString();if(GC.day!==d){GC.day=d;GC.n=0;gcSave()}return GDAILY-(GC.n||0)}
 async function gDetails(id){
   if(!GKEY||gLeft()<=0||!navigator.onLine)return null;
-  GC.n=(GC.n||0)+1;gcSave();
   const r=await fetch('https://places.googleapis.com/v1/places/'+encodeURIComponent(id),{headers:{'X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'id,displayName,primaryType,types,businessStatus'}});
+  GC.n=(GC.n||0)+1;gcSave();                                      /* count only lookups that reached Google */
   if(r.status===429){GC.n=GDAILY;gcSave();return null}
   if(r.status===404||r.status===400)return {miss:true};               /* an old or unknown place ID */
   if(!r.ok){if(r.status===403)console.warn('Google key refused this address');return null}
@@ -1543,7 +1545,7 @@ function nameScore(a,b){
   const cx=x.replace(/ /g,''),cy=y.replace(/ /g,'');if(cx.length>=4&&cy.length>=4&&(cx.startsWith(cy)||cy.startsWith(cx)))return .9;
   const A=new Set(x.split(' ')),B=new Set(y.split(' '));let i=0;for(const w of A)if(B.has(w))i++;return i/Math.max(A.size,B.size);
 }
-function findOnMap(lat,lng,name){let best=null;for(const p of nearby(lat,lng,GLINK_RADIUS)){const s=nameScore(p.n,name);if(s>=.5){const sc=s-p.d/400;if(!best||sc>best.sc)best={...p,sc}}}return best}
+function findOnMap(lat,lng,name,r=GLINK_RADIUS,min=.5){let best=null;for(const p of nearby(lat,lng,r)){const s=nameScore(p.n,name);if(s>=min){const sc=s-p.d/800;if(!best||sc>best.sc)best={...p,sc}}}return best}
 const packP=p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d||0),la:p.lat,ln:p.lng});
 function clearSkip(k){const tp=state.tplaces[k];if(tp.skipWhy&&state.hidden.includes(k))state.hidden=state.hidden.filter(x=>x!==k);tp.skipWhy=null}
 function applySkip(k,why){
@@ -1587,7 +1589,8 @@ async function resolveGoogle(keys,R){
     const nm=(g.displayName&&g.displayName.text)||'';
     if(g.businessStatus==='CLOSED_PERMANENTLY'){GC.neg[gid]='closed';gcSave();applySkip(k,'Closed for good (Google)');continue}
     if(!isFood(g.primaryType||null,g.types||[])){GC.neg[gid]='notfood';gcSave();applySkip(k,'Not a restaurant (Google)');continue}
-    const m=findOnMap(tp.lat,tp.lng,nm);
+    let m=findOnMap(tp.lat,tp.lng,nm);
+    if(!m){await Promise.all(tilesNear(tp,0.003).filter(id=>TM&&TM.tiles[id]).map(loadTile));m=findOnMap(tp.lat,tp.lng,nm,300,.9)}   /* same name a little farther away */
     if(m){const L2=[pkey(m),m.n,m.lat,m.lng];LINKS.byId[gid]=L2;lkSave();applyLink(k,L2,'google');queueLink(gid,m,false)}
     else{                                                  /* Google knows it, our map doesn't: show Google's name until you keep it */
       clearSkip(k);GNAME.set(k,nm);tp.name=null;tp.osm=false;tp.ref=null;tp.src='google';tp.needName=true;tp.cands=[];
@@ -1605,7 +1608,15 @@ function applyFix(k,p){
 }
 /* the match report: what each place in your last import or re-check became, and where the name came from */
 function buildReport(keys,R){
-  const rows=[];
+  const rows=[],deckKeys=new Set(deckVisits().map(v=>v.key)),rated=new Set(state.myReviews.map(r=>r.visitId)),dis=new Set(state.dismissed),cut=NOW-state.params.queueDays*DAY;
+  const noCard=k=>{
+    if(deckKeys.has(k))return '';
+    const vs=state.visits.filter(v=>v.key===k);if(!vs.length)return 'no visit kept';
+    const rec=vs.filter(v=>v.start>=cut);if(!rec.length)return 'older than 6 months';
+    if(rec.every(v=>rated.has(v.id)))return 'already rated';
+    if(rec.every(v=>rated.has(v.id)||dis.has(v.id)))return 'you said you didn’t visit';
+    return 'same day as another card';
+  };
   for(const k of keys){
     const tp=state.tplaces[k];if(!tp)continue;const m=meta(k);
     let st,src;
@@ -1617,7 +1628,7 @@ function buildReport(keys,R){
     else if(tp.src==='google'){st='named';src='Google'}
     else if(tp.name){st='named';src='Our map'}
     else{st='none';src='No match'}
-    rows.push({k,n:m.name,st,src});
+    rows.push({k,n:m.name,st,src,why:st==='skip'?'':noCard(k)});
   }
   const order={none:0,ask:1,google:2,named:3,skip:4};rows.sort((a,b)=>order[a.st]-order[b.st]);
   state.report={at:Date.now(),google:R.google,linked:R.linked,cached:R.cached,noAnswer:R.noAnswer,left:gLeft(),key:!!GKEY,rows:rows.slice(0,300)};
@@ -1625,10 +1636,11 @@ function buildReport(keys,R){
 function renderReport(){
   const box=$('#reportPanel');if(!box)return;const r=state.report;box.hidden=!r;if(!r)return;
   const c=s=>r.rows.filter(x=>x.st===s).length;
-  $('#reportSum').innerHTML=`<b>${r.rows.length}</b> places: ${c('named')} named, ${c('google')} named by Google only, ${c('ask')} asking you, ${c('none')} unmatched, ${c('skip')} skipped.<br>`+
+  const cards=r.rows.filter(x=>x.st!=='skip'&&!x.why).length;
+  $('#reportSum').innerHTML=`<b>${r.rows.length}</b> places: ${c('named')} named, ${c('google')} named by Google only, ${c('ask')} asking you, ${c('none')} unmatched, ${c('skip')} skipped. <b>${cards}</b> have cards to rate.<br>`+
     (r.key?`Google lookups: <b>${r.google}</b> new, ${r.linked} from shared links, ${r.cached} already known. ${r.left} left today.${r.noAnswer?` ${r.noAnswer} couldn’t be looked up (daily limit or offline); they used our map.`:''}`:'Google lookups are off (no key set), so names came from our map.');
   const tag={named:'',google:'g',ask:'a',none:'x',skip:'s'};
-  $('#reportList').innerHTML=r.rows.slice(0,150).map(x=>`<li class="rr ${tag[x.st]}"><span class="nm">${esc(x.n)}</span><span class="src">${esc(x.src)}</span></li>`).join('');
+  $('#reportList').innerHTML=r.rows.slice(0,150).map(x=>`<li class="rr ${tag[x.st]}"><span class="nm">${esc(x.n)}</span><span class="src">${esc(x.src)}${x.why?`<br><b>No card:</b> ${esc(x.why)}`:''}</span></li>`).join('');
 }
 async function recheckMatches(btn){
   const cut=NOW-state.params.window*DAY,live=new Set(state.visits.filter(v=>v.start>=cut&&v.source==='timeline').map(v=>v.key));
@@ -1892,11 +1904,12 @@ async function importFiles(files){
     }catch(e){errs.push(`${f.name} could not be read as JSON.`)}
   }
   const P=state.params, cut=NOW-Math.max(P.window,P.queueDays)*DAY;
-  let short=0,homework=0,old=0,away=0,off=0,notfood=0,named=0,enriched=false,newest=0;const keep=new Map();const hideKeys=new Set(),foodKeys=new Set();
+  let short=0,homework=0,old=0,away=0,off=0,notfood=0,named=0,enriched=false,newest=0,future=0;const keep=new Map();const hideKeys=new Set(),foodKeys=new Set();
   const hr=t=>{const d=new Date(t);return d.getHours()+d.getMinutes()/60};
   const meal=x=>(x>=7&&x<10.5)||(x>=11&&x<15)||(x>=17&&x<22.5);
   for(const v of raw){
     if(!isFinite(v.start)||!isFinite(v.end))continue;
+    if(v.start>Date.now()+36e5){future++;continue}                 /* a glitch in the export: dated in the future */
     newest=Math.max(newest,v.start);
     if(/home|work/i.test(v.type)){homework++;continue}
     if((v.end-v.start)/6e4<P.minDwell){short++;continue}
@@ -1939,13 +1952,15 @@ async function importFiles(files){
   const GR={google:0,linked:0,cached:0,noAnswer:0};
   await loadLinks(tilesForKeys(newKeys));await resolveGoogle(newKeys,GR);flushLinks();
   const om=matchPlaces(newKeys);
-  buildReport(newKeys,GR);
   /* stops the map couldn't vouch for: keep the mealtime ones only */
   if(state.mealOnly){const ok=k=>{const tp=state.tplaces[k];return !tp||tp.name||tp.needName||state.names[k]||tp.label||(tp.cands&&tp.cands.length)};
     const before=state.visits.length;state.visits=state.visits.filter(v=>v.source!=='timeline'||ok(v.key)||state.myReviews.some(r=>r.visitId===v.id)||mealHour(hourOf(v.start))||mealHour(hourOf((v.start+v.end)/2)));
     const cut=before-state.visits.length;off+=cut;added-=cut}
+  buildReport(newKeys,GR);
   const kept=new Set([...keep.values()].map(v=>v.key).filter(k=>!state.hidden.includes(k))).size;
-  state.importInfo={at:Date.now(),found:kept,added,short,homework,old,away,off,notfood,named,enriched,newest,minDwell:P.minDwell,errs,osmAuto:om.auto,osmAsk:om.ask,osm:!!TM,listOther:om.skip||0,tilesOk,area:TM&&TM.area};
+  const rc={gl:0,gonly:0,map:0,mine:0,ask:0,skip:0,cards:0};
+  for(const r of state.report.rows){if(r.st==='skip')rc.skip++;else if(r.st==='ask')rc.ask++;else if(r.st==='google')rc.gonly++;else if(r.src==='Our map')rc.map++;else if(r.src==='Named by you')rc.mine++;else if(r.st==='named')rc.gl++;if(r.st!=='skip'&&!r.why)rc.cards++}
+  state.importInfo={at:Date.now(),found:kept,added,short,homework,old,away,off,notfood,named,enriched,newest,future,minDwell:P.minDwell,errs,osmAuto:om.auto,osmAsk:om.ask,osm:!!TM,listOther:om.skip||0,tilesOk,area:TM&&TM.area,rc};
   save();refresh();
   const q=deckVisits().length;
   if(keep.size){toast(`${q} visit${q===1?'':'s'} waiting in your deck.`);go('rate')}
