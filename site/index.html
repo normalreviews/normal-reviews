@@ -506,9 +506,9 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
           <label class="btn primary" for="file" role="button" tabindex="0">Import Timeline file</label>
         </div>
         <label class="check" for="mealOnly"><input type="checkbox" id="mealOnly"> Only stops around meal times (7–10:30am, 11am–3pm, 5–10:30pm)</label>
-        <label class="check" for="bayOnly"><input type="checkbox" id="bayOnly"> Only Bay Area stops (Santa Cruz to Santa Rosa); trips elsewhere are ignored</label>
+        <label class="check" for="bayOnly"><input type="checkbox" id="bayOnly"> Only stops in California, Oregon, Washington and Nevada; trips elsewhere are ignored</label>
         <p class="status" id="importStatus"></p>
-        <p class="fine">The file is read on this phone and nothing is uploaded. Google’s export has place IDs and coordinates but no names, so name each restaurant once (“Open in Maps” shows what it is) and tap “Not food” on anything else. Home and work are skipped automatically. Re-import anytime; visits you already have are not duplicated.</p>
+        <p class="fine">The file is read on this phone and nothing is uploaded. Restaurants are named from an open map of places (Overture Maps and OpenStreetMap). The app downloads that map only for the areas you’ve been, about 25 km at a time. A stop counts only if a restaurant is within 15 m of it; everything else goes to Skipped places, where you can restore it. Home and work are skipped automatically. Re-import anytime; visits you already have are not duplicated.</p>
       </div>
 
       <div class="panel">
@@ -847,7 +847,7 @@ function renderHeader(){
 /* ---------- deck ---------- */
 function deckVisits(){
   const done=new Set(state.myReviews.map(r=>r.visitId)), hid=new Set(state.hidden), dis=new Set(state.dismissed), sk=state.skipped, cut=NOW-state.params.queueDays*DAY;
-  const away=k=>{if(!state.bayOnly)return false;const tp=state.tplaces[k];return !!tp&&isFinite(tp.lat)&&!inBay(tp.lat,tp.lng)};
+  const away=k=>{if(!state.bayOnly||!TM)return false;const tp=state.tplaces[k];return !!tp&&isFinite(tp.lat)&&!covered(tp.lat,tp.lng)};
   return state.visits.filter(v=>!done.has(v.id)&&!hid.has(v.key)&&!dis.has(v.id)&&v.start>=cut&&!away(v.key))
     .sort((a,b)=>{const sa=sk[a.id]||0,sb=sk[b.id]||0;if(!sa!==!sb)return sa?1:-1;if(sa)return sa-sb;return b.start-a.start});
 }
@@ -1330,7 +1330,7 @@ function renderLogic(){
   const hid=state.hidden.filter(k=>!k.startsWith('r:'));
   $('#skipCount').textContent=hid.length?hid.length+' places':'';
   $('#skipList').innerHTML=hid.length?hid.slice(-60).reverse().map(k=>{const tp=state.tplaces[k]||{},m=meta(k),url=mapsUrl(tp);
-    const why=tp.skipWhy?`Matched: ${esc(tp.skipWhy)}`:'Marked not food';
+    const why=tp.skipWhy?(/^No /.test(tp.skipWhy)?esc(tp.skipWhy):`Closest: ${esc(tp.skipWhy)}`):'Marked not food';
     return `<li><span class="av anon" aria-hidden="true">${ICON.nope}</span><div><div class="nm">${m.named?esc(m.name):'Unnamed stop'}</div><div class="meta">${why}${url?` · <a href="${esc(url)}" target="_blank" rel="noopener">Maps ↗</a>`:''}</div></div><button class="follow" data-cmd="unhide" data-key="${esc(k)}">Restore</button></li>`}).join('')+(hid.length>60?`<li class="emptyrow">and ${hid.length-60} more</li>`:'')
     :'<li class="emptyrow">Nothing skipped yet.</li>';
   $('#demoBtn').textContent='Demo crowd: '+(state.demo?'on':'off');
@@ -1339,86 +1339,104 @@ function renderLogic(){
   $('#bayOnly').checked=!!state.bayOnly;
   $('#stats').innerHTML=`<div><b>${state.myReviews.length}</b><span>your ratings</span></div><div><b>${tl}</b><span>Timeline visits</span></div><div><b>${S.list.length}</b><span>ranked places</span></div><div><b>${S.active}</b><span>active ratings</span></div><div><b>${S.expired}</b><span>expired ratings</span></div><div><b>${world.users.length}</b><span>simulated people</span></div>`;
   const I=state.importInfo;
-  $('#importStatus').innerHTML=I?`Last import ${esc(new Date(I.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}: <b>${I.found}</b> stops kept, ${I.added} new. Skipped ${I.homework} home or work, ${I.short} shorter than ${I.minDwell} min, ${I.old} too old${I.away?`, ${I.away} outside the Bay Area`:''}${I.off?`, ${I.off} outside meal times`:''}${I.notfood?`, ${I.notfood} not food (hidden)`:''}.${I.enriched?` ${I.named} restaurant names added from Google.`:''}${I.osm?` <b>${I.osmAuto||0}</b> named from the Bay Area list${I.osmAsk?`, ${I.osmAsk} need you to pick`:''}.`:''}${I.listOther?` <b>${I.listOther}</b> skipped because they matched a gym, store or other non-food place.`:''}${I.newest?` Newest visit in the file: ${esc(new Date(I.newest).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}))}.`:''}${I.errs&&I.errs.length?'<br>'+I.errs.map(esc).join('<br>'):''}`:'';
+  $('#importStatus').innerHTML=I?`Last import ${esc(new Date(I.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}: <b>${I.found}</b> stops kept, ${I.added} new. Skipped ${I.homework} home or work, ${I.short} shorter than ${I.minDwell} min, ${I.old} too old${I.away?`, ${I.away} outside the covered states`:''}${I.off?`, ${I.off} outside meal times`:''}${I.notfood?`, ${I.notfood} not food (hidden)`:''}.${I.enriched?` ${I.named} restaurant names added from Google.`:''}${I.osm?` <b>${I.osmAuto||0}</b> named from the restaurant map${I.osmAsk?`, ${I.osmAsk} need you to pick`:''}.`:''}${I.listOther?` <b>${I.listOther}</b> skipped: no restaurant within 15 m, or a store, gym or other place was closer.`:''}${I.tilesOk===false?' Some map areas didn’t download; they’ll be checked next time you open the app.':''}${I.newest?` Newest visit in the file: ${esc(new Date(I.newest).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}))}.`:''}${I.errs&&I.errs.length?'<br>'+I.errs.map(esc).join('<br>'):''}`:'';
 }
 
 /* ---------- import ---------- */
-/* ---------- Bay Area place lists (Overture Maps + OpenStreetMap), matched on this device ---------- */
-let OSM=null,osmP=null,OTH=null;
-const CLAT=0.002,CLNG=0.0025;
+/* ---------- place maps (Overture Maps + OpenStreetMap), downloaded per area and matched on this device ----------
+   The covered region is cut into 0.25° tiles (about 25 km). Only the tiles around your own stops are fetched,
+   so the server learns roughly which areas you've been to, never your stops, times or anything else. */
+const TILE=0.25,CLAT=0.002,CLNG=0.0025,NEAR=15,ASK=40;
 const cellOf=(la,ln)=>Math.floor(la/CLAT)+':'+Math.floor(ln/CLNG);
-function loadOSM(){
-  if(osmP)return osmP;
-  const food=fetch('restaurants.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{
-    const grid=new Map();
-    for(const a of j.p){const p={lat:a[0]/1e5,lng:a[1]/1e5,n:a[2],l:j.t[a[3]],c:a[4]||''};const k=cellOf(p.lat,p.lng);let L=grid.get(k);if(!L)grid.set(k,L=[]);L.push(p)}
-    OSM={grid,n:j.p.length,ot:j.ot||[]};return OSM;
-  });
-  const other=fetch('places-other.txt').then(r=>{if(!r.ok)throw new Error(r.status);return r.text()}).then(b64=>{
-    const s=atob(b64.trim()),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;
-  }).then(buf=>{
-    const dv=new DataView(buf);
-    if(String.fromCharCode(dv.getUint8(0),dv.getUint8(1),dv.getUint8(2),dv.getUint8(3))!=='NRO1')throw new Error('format');
-    const n=dv.getUint32(4,true),lat=new Int32Array(buf,8,n),lon=new Int32Array(buf,8+4*n,n),cat=new Uint16Array(buf,8+8*n,n),grid=new Map();
-    for(let i=0;i<n;i++){const k=cellOf(lat[i]/1e5,lon[i]/1e5);let L=grid.get(k);if(!L)grid.set(k,L=[]);L.push(i)}
-    return {lat,lon,cat,grid,n};
-  }).catch(()=>null);
-  osmP=Promise.all([food,other]).then(([f,o])=>{OTH=o;return f}).catch(()=>{OSM=null;OTH=null;return null});
-  return osmP;
+const tileId=(la,ln)=>Math.floor(la/TILE)+'_'+Math.floor(ln/TILE);
+let TM=null,tmP=null;const TS=new Map(),TR=new Set(),FG=new Map(),OG=new Map();
+function loadManifest(){
+  if(!tmP)tmP=fetch('places/manifest.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>(TM=j)).catch(()=>{tmP=null;return null});
+  return tmP;
 }
-function nearestOther(la,ln,r){
-  if(!OTH||!isFinite(la)||!isFinite(ln))return null;
-  const i=Math.floor(la/CLAT),j=Math.floor(ln/CLNG),kx=Math.cos(la*Math.PI/180)*111320;let best=null;
-  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const L=OTH.grid.get((i+a)+':'+(j+b));if(!L)continue;
-    for(const x of L){const d=Math.hypot((OTH.lat[x]/1e5-la)*110540,(OTH.lon[x]/1e5-ln)*kx);if(d<=r&&(!best||d<best.d))best={d,cat:(OSM&&OSM.ot[OTH.cat[x]])||'Other place'}}}
-  return best;
+/* inside the region the maps cover (CA, OR, WA, NV)? */
+const covered=(la,ln)=>!!TM&&isFinite(la)&&isFinite(ln)&&(TM.boxes||[]).some(b=>la>=b[0]&&ln>=b[1]&&la<=b[2]&&ln<=b[3]);
+const addTo=(G,k,x)=>{let L=G.get(k);if(!L)G.set(k,L=[]);L.push(x)};
+function loadTile(id){
+  if(TS.has(id))return TS.get(id);
+  const t=TM&&TM.tiles[id];
+  if(!t){TR.add(id);const p=Promise.resolve(true);TS.set(id,p);return p}
+  const [ti,tj]=id.split('_').map(Number),la0=ti*TILE,ln0=tj*TILE;
+  const f=!t[0]?null:fetch('places/f/'+id+'.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json()});
+  const o=!t[1]?null:fetch('places/o/'+id+'.bin').then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer()});
+  const p=Promise.all([f,o]).then(([fj,buf])=>{
+    if(fj)for(const a of fj.p){const x={lat:a[0]/1e5,lng:a[1]/1e5,n:a[2],l:fj.t[a[3]],c:a[4]||'',k:a[5]||0};addTo(FG,cellOf(x.lat,x.lng),x)}
+    if(buf){const n=new DataView(buf).getUint32(0,true),xs=new Uint16Array(buf,4,n),ys=new Uint16Array(buf,4+2*n,n),cs=new Uint8Array(buf,4+4*n,n);
+      for(let i=0;i<n;i++){const la=la0+ys[i]/65535*TILE,ln=ln0+xs[i]/65535*TILE;addTo(OG,cellOf(la,ln),{lat:la,lng:ln,c:cs[i]})}}
+    TR.add(id);return true;
+  }).catch(()=>{TS.delete(id);return false});
+  TS.set(id,p);return p;
 }
-/* Is this stop a meal? Nearest restaurant vs nearest other place; a long mealtime stay settles a tie (malls, mixed blocks) */
-function classify(la,ln,mealish){
-  const F=nearby(la,ln,60),N=nearestOther(la,ln,60);
-  const fd=F.length?F[0].d:Infinity,nd=N?N.d:Infinity;
-  if(fd<=35&&(fd<=nd+10||mealish))return {food:true,F};
-  if(nd<=35)return {food:false,why:N.cat};
-  return {food:null,F};
+/* the tiles a point's 40 m search can touch */
+function tilesAround(la,ln){const s=new Set();for(const a of [-5e-4,5e-4])for(const b of [-6e-4,6e-4])s.add(tileId(la+a,ln+b));return [...s]}
+async function loadTilesFor(pts){
+  await loadManifest();if(!TM)return false;
+  const ids=new Set();for(const p of pts)if(covered(p.lat,p.lng))tilesAround(p.lat,p.lng).forEach(i=>ids.add(i));
+  const r=await Promise.all([...ids].map(loadTile));return r.every(Boolean);
 }
-/* the area the place lists cover: Santa Cruz to Santa Rosa, coast to Livermore/Gilroy */
-const inBay=(la,ln)=>isFinite(la)&&isFinite(ln)&&la>36.95&&la<38.6&&ln>-122.75&&ln<-121.55;
+const tilesReady=(la,ln)=>tilesAround(la,ln).every(id=>TR.has(id));
+function scan(G,la,ln,r,fn){
+  const i=Math.floor(la/CLAT),j=Math.floor(ln/CLNG),kx=Math.cos(la*Math.PI/180)*111320;
+  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const L=G.get((i+a)+':'+(j+b));if(!L)continue;
+    for(const p of L){const d=Math.hypot((p.lat-la)*110540,(p.lng-ln)*kx);if(d<=r)fn(p,d)}}
+}
+function nearby(la,ln,r){const out=[];if(isFinite(la)&&isFinite(ln))scan(FG,la,ln,r,(p,d)=>out.push({...p,d}));return out.sort((x,y)=>x.d-y.d)}
+function nearestOther(la,ln,r){let best=null;if(isFinite(la)&&isFinite(ln))scan(OG,la,ln,r,(p,d)=>{if(!best||d<best.d)best={d,cat:(TM&&TM.oc[p.c])||'Other place'}});return best}
 const mealHour=x=>(x>=7&&x<10.5)||(x>=11&&x<15)||(x>=17&&x<22.5);
 const hourOf=t=>{const d=new Date(t);return d.getHours()+d.getMinutes()/60};
 const isMealish=v=>(v.end-v.start)/6e4>=40&&(mealHour(hourOf(v.start))||mealHour(hourOf((v.start+v.end)/2)));
-function nearby(la,ln,r){
-  if(!OSM||!isFinite(la)||!isFinite(ln))return[];
-  const i=Math.floor(la/CLAT),j=Math.floor(ln/CLNG),kx=Math.cos(la*Math.PI/180)*111320,out=[];
-  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const L=OSM.grid.get((i+a)+':'+(j+b));if(!L)continue;
-    for(const p of L){const d=Math.hypot((p.lat-la)*110540,(p.lng-ln)*kx);if(d<=r)out.push({...p,d})}}
-  return out.sort((x,y)=>x.d-y.d);
+/* how well a kind of place fits how long you stayed and when: 0 meal, 1 coffee/bakery/dessert, 2 fast food, 3 bar */
+function fit(kind,mins,h){
+  const late=h>=16||h<2;
+  if(kind===1)return mins<=45?1:mins<=90?.6:.35;
+  if(kind===2)return mins<=60?1:mins<=120?.6:.4;
+  if(kind===3)return (late?1:.45)*(mins>=30?1:.6);
+  return (mins>=20&&mins<=180?1:.6)*(mealHour(h)?1:.7);
 }
-/* name a Timeline stop from the list: one clear match within 30 m names it; a few close together ask the user */
+/* Decide one stop: a restaurant within 15 m names it (best fit for your stay wins; the rest become one-tap fixes).
+   A non-food place clearly closer skips it. No restaurant within 15 m skips it, unless it was a 40+ minute mealtime stay
+   with restaurants a little farther out, which asks "Were you at…". */
+function judge(la,ln,vs){
+  const F=nearby(la,ln,ASK),O=nearestOther(la,ln,ASK),mealish=vs.some(isMealish);
+  const near=F.filter(p=>p.d<=NEAR);
+  if(near.length){
+    if(O&&O.d+5<near[0].d&&!mealish)return {food:false,why:O.cat};
+    const sc=near.map(p=>{let f=0;for(const v of vs)f+=fit(p.k,(v.end-v.start)/6e4,hourOf((v.start+v.end)/2));return {...p,s:(vs.length?f/vs.length:1)*(1-p.d/(NEAR*2))}}).sort((a,b)=>b.s-a.s);
+    return {food:true,best:sc[0],alts:sc.slice(1,4)};
+  }
+  if(mealish&&F.length)return {food:'ask',cands:F.slice(0,3)};
+  if(O&&O.d<=NEAR&&DRINKS.test(O.cat))return {food:'bar',label:O.cat};
+  return {food:false,why:O&&O.d<=NEAR?O.cat:'No restaurant within 15 m'};
+}
+const MATCH_V=4,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
 function matchPlaces(keys){
-  let auto=0,ask=0;
-  if(!OSM)return {auto,ask,skip:0};
+  let auto=0,ask=0,skip=0;
+  if(!TM)return {auto,ask,skip};
   const pack=p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d)});
-  let skip=0;
+  const vsOf=new Map();for(const v of state.visits){let L=vsOf.get(v.key);if(!L)vsOf.set(v.key,L=[]);L.push(v)}
   for(const k of keys){
     const tp=state.tplaces[k];
-    if(!tp||tp.osmV===3||state.names[k]||(tp.name&&!tp.osm)||!isFinite(tp.lat))continue;
-    tp.osmV=3;tp.cands=[];tp.alts=[];
-    if(tp.osm){tp.name=null;tp.label=null;tp.osm=false}
-    const mealish=state.visits.some(v=>v.key===k&&isMealish(v));
-    const cl=classify(tp.lat,tp.lng,mealish);
+    if(!tp||tp.osmV===MATCH_V||state.names[k]||(tp.name&&!tp.osm)||!isFinite(tp.lat)||!covered(tp.lat,tp.lng)||!tilesReady(tp.lat,tp.lng))continue;
+    tp.osmV=MATCH_V;tp.cands=[];tp.alts=[];
+    if(tp.osm){tp.name=null;tp.label=null;tp.addr=null;tp.osm=false}
+    const cl=judge(tp.lat,tp.lng,vsOf.get(k)||[]);
+    const rated=state.myReviews.some(r=>r.key===k);
     if(cl.food===false){
-      if(state.allow.includes(k))continue;
+      if(state.allow.includes(k)||rated)continue;
       tp.skipWhy=cl.why;
-      if(!state.hidden.includes(k)&&!state.myReviews.some(r=>r.key===k)){state.hidden.push(k);skip++}
+      if(!state.hidden.includes(k)){state.hidden.push(k);skip++}
       continue;
     }
-    const c=cl.F||[];
-    if(!c.length)continue;
-    if(c[0].d<=35){
-      /* Google's pin for the business sits within a few meters of the same place on the list: take the nearest, offer the others as one-tap fixes */
-      tp.name=c[0].n;tp.label=c[0].l;if(c[0].c)tp.addr=c[0].c;tp.osm=true;
-      tp.alts=c.slice(1,4).map(pack);auto++;
-    }else{tp.cands=c.slice(0,3).map(pack);ask++}
+    if(tp.skipWhy&&state.hidden.includes(k)){state.hidden=state.hidden.filter(x=>x!==k)}
+    tp.skipWhy=null;
+    if(cl.food===true){const b=cl.best;tp.name=b.n;tp.label=b.l;tp.addr=b.c||null;tp.osm=true;tp.alts=cl.alts.map(pack);auto++}
+    else if(cl.food==='bar'){tp.label=tp.label||cl.label}
+    else{tp.cands=cl.cands.map(pack);ask++}
   }
   return {auto,ask,skip};
 }
@@ -1452,7 +1470,7 @@ function extract(j){
 async function importFiles(files){
   if(!files||!files.length)return;
   toast('Reading '+files.length+' file'+(files.length>1?'s':'')+'…');
-  await loadOSM();
+  await loadManifest();
   const raw=[],errs=[];
   for(const f of files){
     try{
@@ -1463,7 +1481,7 @@ async function importFiles(files){
     }catch(e){errs.push(`${f.name} could not be read as JSON.`)}
   }
   const P=state.params, cut=NOW-Math.max(P.window,P.queueDays)*DAY;
-  let short=0,homework=0,old=0,away=0,off=0,notfood=0,listOther=0,named=0,enriched=false,newest=0;const keep=new Map();const hideKeys=new Set(),foodKeys=new Set(),whyOf={};
+  let short=0,homework=0,old=0,away=0,off=0,notfood=0,named=0,enriched=false,newest=0;const keep=new Map();const hideKeys=new Set(),foodKeys=new Set();
   const hr=t=>{const d=new Date(t);return d.getHours()+d.getMinutes()/60};
   const meal=x=>(x>=7&&x<10.5)||(x>=11&&x<15)||(x>=17&&x<22.5);
   for(const v of raw){
@@ -1472,21 +1490,16 @@ async function importFiles(files){
     if(/home|work/i.test(v.type)){homework++;continue}
     if((v.end-v.start)/6e4<P.minDwell){short++;continue}
     if(v.start<cut){old++;continue}
-    if(state.bayOnly&&isFinite(v.lat)&&!inBay(v.lat,v.lng)){away++;continue}
+    if(state.bayOnly&&TM&&isFinite(v.lat)&&!covered(v.lat,v.lng)){away++;continue}
     const key=v.placeId?'g:'+v.placeId:(isFinite(v.lat)?'c:'+v.lat.toFixed(4)+','+v.lng.toFixed(4):null);
     if(!key)continue;
     let food=(v.types||v.ptype)?isFood(v.ptype,v.types):null;
     if(food!==null)enriched=true;
-    let listSkip=false;
-    if(food===null&&!v.name&&!state.names[key]&&!state.allow.includes(key)){
-      const cl=classify(v.lat,v.lng,isMealish(v));
-      if(cl.food===true)food=true;
-      else if(cl.food===false){food=false;listSkip=true;whyOf[key]=cl.why}
-    }
-    if(food===false){if(listSkip)listOther++;else notfood++;hideKeys.add(key)}
+    /* no Google type: the restaurant map decides after import (matchPlaces). Outside the map, keep only mealtime stops. */
+    if(food===false){notfood++;hideKeys.add(key)}
     else{
       foodKeys.add(key);
-      if(food!==true&&state.mealOnly&&!meal(hr(v.start))&&!meal(hr((v.start+v.end)/2))&&!meal(hr(v.end))){off++;continue}
+      if(food!==true&&!covered(v.lat,v.lng)&&state.mealOnly&&!meal(hr(v.start))&&!meal(hr((v.start+v.end)/2))&&!meal(hr(v.end))){off++;continue}
     }
     const dk=key+'|'+new Date(v.start).toDateString(), prev=keep.get(dk);
     if(!prev||(v.end-v.start)>(prev.end-prev.start))keep.set(dk,{...v,key});
@@ -1500,7 +1513,6 @@ async function importFiles(files){
   for(const k of hideKeys){
     if(foodKeys.has(k)||state.hidden.includes(k)||state.allow.includes(k)||state.myReviews.some(r=>r.key===k)||state.names[k])continue;
     state.hidden.push(k);
-    if(whyOf[k]){const v=raw.find(x=>(x.placeId?'g:'+x.placeId:null)===k);const tp=state.tplaces[k]||(state.tplaces[k]={placeId:v&&v.placeId||null,lat:v&&v.lat,lng:v&&v.lng,name:null});tp.skipWhy=whyOf[k];tp.lastSeen=v&&v.start}
   }
   for(const v of keep.values()){
     const tp=state.tplaces[v.key]||(state.tplaces[v.key]={placeId:v.placeId||null,lat:v.lat,lng:v.lng,name:null});
@@ -1510,9 +1522,15 @@ async function importFiles(files){
     const id=v.key+'@'+v.start;if(have.has(id))continue;
     state.visits.push({id,key:v.key,start:v.start,end:v.end,source:'timeline'});added++;
   }
-  const om=matchPlaces([...new Set([...keep.values()].map(v=>v.key))]);
+  const newKeys=[...new Set([...keep.values()].map(v=>v.key))];
+  const tilesOk=await loadTilesFor(newKeys.map(k=>state.tplaces[k]).filter(Boolean));
+  const om=matchPlaces(newKeys);
+  /* stops the map couldn't vouch for: keep the mealtime ones only */
+  if(state.mealOnly){const ok=k=>{const tp=state.tplaces[k];return !tp||tp.name||state.names[k]||tp.label||(tp.cands&&tp.cands.length)};
+    const before=state.visits.length;state.visits=state.visits.filter(v=>v.source!=='timeline'||ok(v.key)||state.myReviews.some(r=>r.visitId===v.id)||mealHour(hourOf(v.start))||mealHour(hourOf((v.start+v.end)/2)));
+    const cut=before-state.visits.length;off+=cut;added-=cut}
   const kept=new Set([...keep.values()].map(v=>v.key).filter(k=>!state.hidden.includes(k))).size;
-  state.importInfo={at:Date.now(),found:kept,added,short,homework,old,away,off,notfood,named,enriched,newest,minDwell:P.minDwell,errs,osmAuto:om.auto,osmAsk:om.ask,osm:!!OSM,listOther:listOther+(om.skip||0),other:!!OTH};
+  state.importInfo={at:Date.now(),found:kept,added,short,homework,old,away,off,notfood,named,enriched,newest,minDwell:P.minDwell,errs,osmAuto:om.auto,osmAsk:om.ask,osm:!!TM,listOther:om.skip||0,tilesOk,area:TM&&TM.area};
   save();refresh();
   const q=deckVisits().length;
   if(keep.size){toast(`${q} visit${q===1?'':'s'} waiting in your deck.`);go('rate')}
@@ -1767,7 +1785,7 @@ document.addEventListener('click',e=>{
       const k=t.dataset.key;state.hidden=state.hidden.filter(x=>x!==k);
       if(!state.allow.includes(k))state.allow.push(k);
       const tp=state.tplaces[k];if(tp){tp.skipWhy=null;tp.osmV=0}
-      matchPlaces([k]);save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
+      loadTilesFor(tp?[tp]:[]).then(()=>{matchPlaces([k]);save();refresh()});save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
     case 'signin':showSignIn();break;
     case 'notnow':state.noSignIn=true;save();closeAcct();toast('You can sign in anytime from the Friends tab.');break;
     case 'signout':if(sb)sb.auth.signOut().then(()=>{state.noSignIn=true;save();toast('Signed out. Your ratings stay on this phone.')});break;
@@ -1811,7 +1829,7 @@ document.addEventListener('input',e=>{
   state.params[k]=+e.target.value;$('#o-'+k).textContent=d[5](state.params[k]);
   cancelAnimationFrame(dialRaf);dialRaf=requestAnimationFrame(()=>{save();refresh()});
 });
-$('#bayOnly').addEventListener('change',e=>{state.bayOnly=e.target.checked;save();refresh();toast(state.bayOnly?'Stops outside the Bay Area are hidden':'Stops everywhere are shown')});
+$('#bayOnly').addEventListener('change',e=>{state.bayOnly=e.target.checked;save();refresh();toast(state.bayOnly?'Stops outside CA, OR, WA and NV are hidden':'Stops everywhere are shown')});
 $('#mealOnly').addEventListener('change',e=>{state.mealOnly=e.target.checked;save();toast(state.mealOnly?'Meal-time filter on for your next import':'All stops will be included on your next import')});
 $('#file').addEventListener('change',e=>{const f=[...e.target.files];e.target.value='';importFiles(f)});
 $('#photoFile').addEventListener('change',async e=>{
@@ -1841,7 +1859,11 @@ buildDials();
 refresh();
 go((location.hash||'').slice(1)||'rate');
 photoInit().then(()=>{if(PH.mem.size)refresh()});
-loadOSM().then(o=>{if(!o)return;const r=matchPlaces(Object.keys(state.tplaces));if(r.auto||r.ask){save();refresh()}});
+/* re-check saved stops against the restaurant map (only the areas you've been, and only places not yet checked) */
+loadManifest().then(async m=>{if(!m)return;refresh();
+  const todo=Object.keys(state.tplaces).filter(k=>{const tp=state.tplaces[k];return tp&&tp.osmV!==MATCH_V&&!state.names[k]&&!(tp.name&&!tp.osm)&&covered(tp.lat,tp.lng)});
+  if(!todo.length)return;await loadTilesFor(todo.map(k=>state.tplaces[k]));
+  const r=matchPlaces(todo);if(r.auto||r.ask||r.skip){save();refresh()}});
 backendInit();
 })();
 </script>
