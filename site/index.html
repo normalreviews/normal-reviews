@@ -337,6 +337,8 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .codebox{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface-2);border-radius:12px;padding:10px 12px}
 .codebox b{display:block;font:600 24px/1.1 var(--f-mono);letter-spacing:.12em}
 .addf,.acctf{display:flex;gap:8px}
+.acctf.col{flex-direction:column}.acctf.col input{flex:none}.acctf.col .btns{margin:2px 0 0}
+#acctBody .lnks{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 .addf input,.acctf input{flex:1;min-width:0;font:600 16px var(--f-body);padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
 .addf input:focus,.acctf input:focus{outline:none;border-color:var(--accent)}
 #acctBody{gap:14px}
@@ -1847,6 +1849,9 @@ const friendly=err=>{const m=(err&&err.message)||String(err);
   if(/rate limit|security purposes|too many/i.test(m))return 'Too many sign-in emails were sent. Wait a few minutes and try again.';
   if(/(token|otp).*(expired|invalid)|(expired|invalid).*(token|otp)/i.test(m))return 'That code didn’t work. Check it, or ask for a new one.';
   if(/failed to fetch|network/i.test(m))return 'No connection. Check your internet and try again.';
+  if(/invalid login credentials/i.test(m))return 'That email and PIN don’t match. Check the PIN you were sent.';
+  if(/pin length/i.test(m))return 'Your PIN is 4 digits.';
+  if(/email not confirmed/i.test(m))return 'This account isn’t switched on yet. Ask the person who invited you.';
   return m};
 
 async function backendInit(){
@@ -1892,13 +1897,27 @@ function showSignIn(step,email){
       ${NATIVE?`<p class="fine">We sent a sign-in email to <b>${esc(email)}</b>. In your email app, <b>press and hold</b> the sign-in link, tap <b>Copy link</b>, then paste it here. It can take a minute, so check spam too.</p>`
       :`<p class="fine">We sent a sign-in email to <b>${esc(email)}</b>. Open it on this phone and tap the sign-in link; you’ll be signed in automatically. It can take a minute, so check spam too.</p><p class="fine">If the link opens in a different app or browser, press and hold it instead, tap Copy link, and paste it here. If the email shows a number code, type that.</p>`}
       <form class="acctf" data-form="code" data-email="${esc(email)}"><input id="otp" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" placeholder="${NATIVE?'Paste the link':'Link or code'}" aria-label="Sign-in link or code" required><button class="btn primary">Sign in</button></form>
-      <button class="lnk" data-cmd="signin">Use a different email</button>`);
+      <button class="lnk" data-cmd="signin">Back to sign in</button>`);
     return;
   }
-  acctOpen(`<h2 class="h2">Rate with friends</h2>
-    <p class="fine">Sign in with your email to share ratings with your testers. Your Timeline and visits stay on this phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
-    <form class="acctf" data-form="email"><input id="email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="Email" required><button class="btn primary">Email me a sign-in link</button></form>
-    <button class="lnk" data-cmd="notnow">Not now, use it just for me</button>`);
+  if(step==='link'){
+    acctOpen(`<h2 class="h2">Sign in with an email link</h2>
+      <p class="fine">For the app’s organizers. Testers: use the PIN you were sent.</p>
+      <form class="acctf" data-form="email"><input id="email" type="email" autocomplete="email" placeholder="you@example.com" value="${esc(email||'')}" aria-label="Email" required><button class="btn primary">Email me a link</button></form>
+      <button class="lnk" data-cmd="signin">Back to PIN sign-in</button>`);
+    return;
+  }
+  /* beta sign-in: each tester gets a 4-digit PIN from the organizer; it never changes.
+     Supabase needs 6+ characters, so the PIN is stored as "nrbeta" + PIN (PIN 4827 → password nrbeta4827). */
+  acctOpen(`<h2 class="h2">Sign in</h2>
+    <p class="fine">Use your email and the 4-digit PIN you were sent for the beta. Your Timeline and visits stay on this phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
+    <form class="acctf col" data-form="pass">
+      <input id="email" type="email" autocomplete="username" inputmode="email" placeholder="Email" value="${esc(email||'')}" aria-label="Email" required>
+      <input id="pw" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" placeholder="4-digit PIN" aria-label="4-digit PIN" required>
+      <div class="btns"><button class="btn primary">Sign in</button></div>
+    </form>
+    <p class="fine">No PIN yet? Ask the person who invited you.</p>
+    <div class="lnks"><button class="lnk" data-cmd="notnow">Not now, use it just for me</button><button class="lnk" data-cmd="linksignin">Email me a sign-in link instead</button></div>`);
 }
 function askName(){
   acctOpen(`<h2 class="h2">What should friends call you?</h2>
@@ -1910,7 +1929,12 @@ document.addEventListener('submit',async e=>{
   e.preventDefault();
   const btn=f.querySelector('button');btn.disabled=true;
   try{
-    if(f.dataset.form==='email'){
+    if(f.dataset.form==='pass'){
+      const email=f.querySelector('#email').value.trim().toLowerCase(),pin=f.querySelector('#pw').value.replace(/\D/g,'');
+      if(pin.length!==4)throw new Error('pin length');
+      const {error}=await sb.auth.signInWithPassword({email,password:'nrbeta'+pin});
+      if(error)throw error;
+    }else if(f.dataset.form==='email'){
       const email=f.querySelector('#email').value.trim();
       const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
       if(error)throw error;
@@ -2093,7 +2117,8 @@ document.addEventListener('click',e=>{
       if(!state.allow.includes(k))state.allow.push(k);
       const tp=state.tplaces[k];if(tp){tp.skipWhy=null;tp.osmV=0}
       loadTilesFor(tp?[tp]:[]).then(()=>{matchPlaces([k]);save();refresh()});save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
-    case 'signin':showSignIn();break;
+    case 'signin':showSignIn(null,($('#email')||{}).value);break;
+    case 'linksignin':showSignIn('link',($('#email')||{}).value);break;
     case 'gps':gpsToggle();break;
     case 'addvisit':openAdd();break;
     case 'avclose':closeMenu();break;
