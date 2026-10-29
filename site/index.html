@@ -221,6 +221,14 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .menu .mlist{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
 .mitem{appearance:none;display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:center;text-align:left;width:100%;border:0;background:none;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--line)}
 .mitem:last-child{border-bottom:0}
+.report{list-style:none;margin:0;padding:0;max-height:380px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.report:empty{display:none}
+.rr{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13.5px}
+.rr:last-child{border-bottom:0}
+.rr .nm{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.rr .src{color:var(--muted);font-size:12.5px;text-align:right;flex:none;max-width:48%}
+.rr.x .src,.rr.a .src{color:var(--t1)}
+.rr.s .nm{color:var(--muted);font-weight:500}
 .addv{display:flex;flex-direction:column;gap:10px}
 .addv .avrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .addv input,.addv select{font:600 16px var(--f-body);padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);min-width:0}
@@ -529,7 +537,15 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <label class="check" for="mealOnly"><input type="checkbox" id="mealOnly"> Only stops around meal times (7–10:30am, 11am–3pm, 5–10:30pm)</label>
         <label class="check" for="bayOnly"><input type="checkbox" id="bayOnly"> Only stops in California, Oregon, Washington and Nevada; trips elsewhere are ignored</label>
         <p class="status" id="importStatus"></p>
-        <p class="fine">The file is read on this phone and nothing is uploaded. Restaurants are named from an open map of places (Overture Maps and OpenStreetMap). The app downloads that map only for the areas you’ve been, about 25 km at a time. A stop counts only if you stayed 10+ minutes and a restaurant is within 8 m of it; everything else goes to Skipped places, where you can restore it. Home and work are skipped automatically. Re-import anytime; visits you already have are not duplicated.</p>
+        <p class="fine">The file is read on this phone and nothing is uploaded. Restaurants are named from an open map of places (Overture Maps and OpenStreetMap). The app downloads that map only for the areas you’ve been, about 25 km at a time. Each stop’s Google place ID is named by Google once (shared with other testers as a link to our open map, never with your name). Otherwise a stop counts only if you stayed 10+ minutes and a restaurant is within 8 m of it; everything else goes to Skipped places, where you can restore it. Home and work are skipped automatically. Re-import anytime; visits you already have are not duplicated.</p>
+      </div>
+
+      <div class="panel" id="reportPanel" hidden>
+        <div class="listhead"><h2 class="h2">Match report</h2><span class="fine">last import or re-check</span></div>
+        <p class="status" id="reportSum"></p>
+        <div class="btns"><button class="btn" data-cmd="recheck">Re-check matches</button></div>
+        <ul class="report" id="reportList"></ul>
+        <p class="fine">Re-check uses what this phone and the shared links already know, so it rarely needs Google. Restaurants marked “Google (not on our map yet)” can be kept with Name it.</p>
       </div>
 
       <div class="panel" id="gpsPanel" hidden>
@@ -723,10 +739,10 @@ let S=null,G=null,F=null,openKey=null,rankFilter='all';
 function meta(key){
   if(key.startsWith('r:')){const p=PMAP[key.slice(2)];if(p)return {name:p.name,sub:p.hood+' · '+p.cuisine,hood:p.hood,cuisine:p.cuisine,hue:p.hue,tl:false,named:true,note:TRENDS[p.id]&&TRENDS[p.id].note,lat:p.lat,lng:p.lng}}
   const lk=localKey(key),tp=state.tplaces[lk]||remotePlaces[key]||{};
-  const name=state.names[lk]||state.names[key]||tp.name;
+  const name=state.names[lk]||state.names[key]||tp.name,gname=!name&&GNAME.get(lk);
   const coords=isFinite(tp.lat)?tp.lat.toFixed(4)+', '+tp.lng.toFixed(4):'';
   const src=tp.manual?'Added by you':tp.gps?'Found by your phone':'From your Timeline';
-  return {name:name||'Unnamed stop',sub:tp.addr?tp.addr.split(',').slice(0,2).join(','):name?src:(coords||src),hood:'',cuisine:tp.label||'Timeline stop',hue:hash(key)%360,tl:true,named:!!name,coords,tp,lat:tp.lat,lng:tp.lng};
+  return {name:name||gname||'Unnamed stop',sub:tp.addr?tp.addr.split(',').slice(0,2).join(','):gname?'Name from Google':name?src:(coords||src),hood:'',cuisine:tp.label||'Timeline stop',hue:hash(key)%360,tl:true,named:!!name,gname:!!gname,coords,tp,lat:tp.lat,lng:tp.lng};
 }
 function mapsUrl(tp){
   if(!tp||!isFinite(tp.lat))return null;
@@ -933,14 +949,15 @@ function cardHTML(v){
       ${m.named?'':`<button class="btn danger" data-cmd="hide" data-key="${esc(v.key)}">Not food</button>`}</div>`;
     const cands=!m.named&&m.tp&&m.tp.cands;
     const alts=m.tp&&m.tp.osm&&!state.names[v.key]&&m.tp.alts;
-    if(alts&&alts.length)extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span>${alts.map((c,i)=>`<button class="lnk" data-cmd="pickalt" data-key="${esc(v.key)}" data-i="${i}">${esc(c.n)}</button>`).join('')}<button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
-    else if(m.tp&&m.tp.osm&&!state.names[v.key])extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span><button class="lnk" data-cmd="name" data-key="${esc(v.key)}">Rename</button><button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
+    const srch=`<button class="lnk" data-cmd="fixsearch" data-key="${esc(v.key)}">Search…</button>`;
+    if(alts&&alts.length)extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span>${alts.map((c,i)=>`<button class="lnk" data-cmd="pickalt" data-key="${esc(v.key)}" data-i="${i}">${esc(c.n)}</button>`).join('')}${srch}<button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
+    else if(m.tp&&!state.names[v.key])extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span>${srch}<button class="lnk" data-cmd="name" data-key="${esc(v.key)}">Type a name</button><button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
     if(cands&&cands.length)extra=`<div class="pick" data-nodrag><p class="fine">Were you at…</p><div class="btns">${cands.map((c,i)=>`<button class="btn" data-cmd="pick" data-key="${esc(v.key)}" data-i="${i}">${esc(c.n)} <small class="fine">${c.d} m</small></button>`).join('')}<button class="btn ghost" data-cmd="pick" data-key="${esc(v.key)}" data-i="-1">None of these</button></div></div>`+extra;
   }
   const dr=state.drafts[v.id]||{}, dphoto=dr.photo&&PH.mem.get(dr.photo), photo=dphoto||cover(v.key);
   const chips=(dphoto?`<span class="dchip">${ICON.cam}<span>Photo added</span></span>`:'')+(dr.comment?`<span class="dchip">${ICON.cmt}<span>${esc(dr.comment)}</span></span>`:'');
   if(chips)extra+=`<div class="dchips">${chips}</div>`;
-  const note=m.tl?(m.named?'Only you have rated this spot so far.':'Google’s export has no names. Name it once and it sticks.')
+  const note=m.tl?(m.named?'Only you have rated this spot so far.':m.gname?'Google’s name for this place. Tap Name it, then Save, to keep it.':'No name yet. Search for it, or name it once and it sticks.')
     :(ppl.length?`${whoRated(fr,others)} rated this in the last ${P.window} days. Scores stay hidden until you swipe.`:'Nobody else has rated this recently.');
   const ask=m.tl&&!m.named&&m.tp&&m.tp.cands&&m.tp.cands.length;
   return `<div class="plate${photo?' has-photo':''}${ask?' compact':''}" style="--h:${m.hue}${photo?`;background-image:url('${photo}')`:''}"><span class="pchip a">${esc(m.cuisine)}</span><span class="pchip b">${ago(v.start)}</span>${m.tl&&!m.named?`<span class="mono" aria-hidden="true">${esc(mono)}</span>`:foodArt(m.cuisine+' '+m.name)}<button class="more" data-cmd="menu" data-visit="${esc(v.id)}" aria-label="More options for ${esc(m.name)}">${ICON.dots}</button></div>
@@ -1144,7 +1161,7 @@ function undo(){
 function startNaming(btn){
   const key=btn.dataset.key, host=btn.closest('.cbody,.body');
   const h=host&&host.querySelector('.cname');if(!h)return;
-  const cur=state.names[key]||(state.tplaces[key]||{}).name||'';
+  const cur=state.names[key]||(state.tplaces[key]||{}).name||GNAME.get(key)||'';
   h.outerHTML=`<form class="namer" data-nodrag data-key="${esc(key)}"><input id="nameInput" aria-label="Place name" placeholder="Restaurant name" value="${esc(cur)}" maxlength="60" autocomplete="off"><button class="btn primary">Save</button></form>`;
   const inp=host.querySelector('#nameInput');inp.focus();inp.select();
 }
@@ -1444,11 +1461,11 @@ function judge(la,ln,vs,gps){
     if(gps&&sc.length>1&&sc[1].s>=sc[0].s*.85)return {food:'ask',cands:sc.slice(0,3)};
     return {food:true,best:sc[0],alts:sc.slice(1,4)};
   }
-  if(mealish&&F.length)return {food:'ask',cands:F.slice(0,3)};
+  if(F.length&&(F[0].d<=25||mealish))return {food:'ask',cands:F.slice(0,3)};      /* close but not right on it: ask, don't skip */
   if(O&&O.d<=R&&DRINKS.test(O.cat))return {food:'bar',label:O.cat};
   return {food:false,why:O&&O.d<=R?O.cat:`No restaurant within ${R} m`};
 }
-const MATCH_V=7,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
+const MATCH_V=8,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
 function matchPlaces(keys){
   let auto=0,ask=0,skip=0;
   if(!TM)return {auto,ask,skip};
@@ -1474,11 +1491,177 @@ function matchPlaces(keys){
     }
     if(tp.skipWhy&&state.hidden.includes(k)){state.hidden=state.hidden.filter(x=>x!==k)}
     tp.skipWhy=null;
-    if(cl.food===true){const b=cl.best;tp.name=b.n;tp.label=b.l;tp.addr=b.c||null;tp.osm=true;tp.ref=k.startsWith('p:')?null:pkey(b);tp.alts=cl.alts.map(pack);auto++}
+    if(cl.food===true){const b=cl.best;tp.name=b.n;tp.label=b.l;tp.addr=b.c||null;tp.osm=true;tp.src='map';tp.ref=k.startsWith('p:')?null:pkey(b);tp.alts=nearAlts(tp,pkey(b));auto++}
     else if(cl.food==='bar'){tp.label=tp.label||cl.label}
     else{tp.cands=cl.cands.map(pack);ask++}
   }
   return {auto,ask,skip};
+}
+
+/* ---------- Google place IDs → our open map (shared link table) ----------
+   Your Timeline already says which place you were at: Google's place ID. If anyone has linked that ID to a restaurant on
+   our map, we use the link. If not, the phone asks Google once for the name and type, finds that restaurant on our map and
+   shares the link (the place ID and our map listing, nothing else, no user attached). Google's names are shown but never
+   saved, per Google's terms; place IDs may be kept. Links are downloaded per area, so our server never learns your stops. */
+const GCL='normal-reviews.gcache',LKS='normal-reviews.links',GDAILY=150,GLINK_RADIUS=120;
+const GKEY=(window.NR_CONFIG||{}).places||'';
+const jget=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
+let GC=jget(GCL,{});GC.neg=GC.neg||{};GC.miss=GC.miss||{};                        /* place IDs that aren't restaurants or are closed; today's lookups */
+const gcSave=()=>{try{localStorage.setItem(GCL,JSON.stringify(GC))}catch(e){}};
+let LINKS=jget(LKS,{});LINKS.byId=LINKS.byId||{};LINKS.tiles=LINKS.tiles||{};LINKS.pending=LINKS.pending||[];
+const lkSave=()=>{try{localStorage.setItem(LKS,JSON.stringify(LINKS))}catch(e){}};
+const GNAME=new Map();                                         /* Google's names, this session only */
+const tilesForKeys=keys=>[...new Set(keys.flatMap(k=>{const tp=state.tplaces[k];return tp&&isFinite(tp.lat)?tilesAround(tp.lat,tp.lng):[]}))];
+async function loadLinks(tiles){
+  if(!sb)return;
+  const now=Date.now(),need=tiles.filter(t=>!(LINKS.tiles[t]>now-6*3600e3));
+  if(!need.length)return;
+  try{
+    for(let i=0;i<need.length;i+=40){
+      const {data,error}=await sb.from('place_links').select('google_id,map_key,map_name,map_lat,map_lng').in('tile',need.slice(i,i+40));
+      if(error)throw error;
+      for(const r of data||[])LINKS.byId[r.google_id]=[r.map_key,r.map_name,r.map_lat,r.map_lng];
+    }
+    for(const t of need)LINKS.tiles[t]=now;lkSave();
+  }catch(e){console.warn('links',e)}
+}
+function gLeft(){const d=new Date().toDateString();if(GC.day!==d){GC.day=d;GC.n=0;gcSave()}return GDAILY-(GC.n||0)}
+async function gDetails(id){
+  if(!GKEY||gLeft()<=0||!navigator.onLine)return null;
+  GC.n=(GC.n||0)+1;gcSave();
+  const r=await fetch('https://places.googleapis.com/v1/places/'+encodeURIComponent(id),{headers:{'X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'id,displayName,primaryType,types,businessStatus'}});
+  if(r.status===429){GC.n=GDAILY;gcSave();return null}
+  if(r.status===404||r.status===400)return {miss:true};               /* an old or unknown place ID */
+  if(!r.ok){if(r.status===403)console.warn('Google key refused this address');return null}
+  return r.json();
+}
+/* matching Google's name to a name on our map */
+const NSTOP=/\b(the|restaurant|restaurants|cafe|coffee|bar|grill|kitchen|and|co|inc|llc|of|house|shop|eatery)\b/g;
+function nameKey(s){const b=String(s||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/['’]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9 ]/g,' ');const k=b.replace(NSTOP,' ').replace(/\s+/g,' ').trim();return k||b.replace(/\s+/g,' ').trim()}
+function nameScore(a,b){
+  const x=nameKey(a),y=nameKey(b);if(!x||!y)return 0;if(x===y)return 1;
+  const cx=x.replace(/ /g,''),cy=y.replace(/ /g,'');if(cx.length>=4&&cy.length>=4&&(cx.startsWith(cy)||cy.startsWith(cx)))return .9;
+  const A=new Set(x.split(' ')),B=new Set(y.split(' '));let i=0;for(const w of A)if(B.has(w))i++;return i/Math.max(A.size,B.size);
+}
+function findOnMap(lat,lng,name){let best=null;for(const p of nearby(lat,lng,GLINK_RADIUS)){const s=nameScore(p.n,name);if(s>=.5){const sc=s-p.d/400;if(!best||sc>best.sc)best={...p,sc}}}return best}
+const packP=p=>({n:p.n,l:p.l,c:p.c,d:Math.round(p.d||0),la:p.lat,ln:p.lng});
+function clearSkip(k){const tp=state.tplaces[k];if(tp.skipWhy&&state.hidden.includes(k))state.hidden=state.hidden.filter(x=>x!==k);tp.skipWhy=null}
+function applySkip(k,why){
+  const tp=state.tplaces[k];tp.osmV=MATCH_V;tp.gV=MATCH_V;tp.src='google';
+  if(state.allow.includes(k)||state.myReviews.some(r=>r.key===k))return;
+  tp.skipWhy=why;if(!state.hidden.includes(k))state.hidden.push(k);
+}
+function nearAlts(tp,exceptKey){return isFinite(tp.lat)?nearby(tp.lat,tp.lng,40).filter(p=>pkey(p)!==exceptKey).slice(0,6).map(packP):[]}
+function applyLink(k,L,src){
+  const tp=state.tplaces[k];clearSkip(k);
+  const p=isFinite(L[2])?nearby(L[2],L[3],3).find(x=>pkey(x)===L[0]):null;
+  tp.name=L[1]||(p&&p.n)||null;tp.label=(p&&p.l)||tp.label||null;tp.addr=(p&&p.c)||tp.addr||null;
+  tp.osm=true;tp.ref=k.startsWith('p:')?null:L[0];tp.src=src;tp.cands=[];tp.needName=false;tp.alts=nearAlts(tp,L[0]);
+  tp.osmV=MATCH_V;tp.gV=MATCH_V;tp.refV=MATCH_V;GNAME.delete(k);
+}
+function queueLink(gid,p,fix){LINKS.pending=LINKS.pending.filter(x=>x.gid!==gid);LINKS.pending.push({gid,tile:tileId(p.lat,p.lng),key:pkey(p),name:p.n,lat:p.lat,lng:p.lng,fix:!!fix});lkSave()}
+async function flushLinks(){
+  if(!sb||!me||!LINKS.pending.length)return;
+  for(const x of LINKS.pending.slice()){
+    const {error}=await sb.rpc('link_place',{p_google_id:x.gid,p_tile:x.tile,p_map_key:x.key,p_map_name:x.name,p_lat:x.lat,p_lng:x.lng,p_fix:x.fix});
+    if(error){console.warn('link',error);break}
+    LINKS.pending=LINKS.pending.filter(y=>y!==x);
+  }
+  lkSave();
+}
+/* name Timeline places from their Google place IDs: shared link first, then Google, then (in matchPlaces) our map */
+async function resolveGoogle(keys,R){
+  for(const k of keys){
+    const tp=state.tplaces[k];
+    if(!tp||!tp.placeId||state.names[k]||tp.gV===MATCH_V||!isFinite(tp.lat)||!covered(tp.lat,tp.lng))continue;
+    const gid=tp.placeId;
+    if(GC.neg[gid]){applySkip(k,GC.neg[gid]==='closed'?'Closed for good (Google)':'Not a restaurant (Google)');R.cached++;continue}
+    const L=LINKS.byId[gid];
+    if(L){applyLink(k,L,'link');R.linked++;continue}
+    if(!nearby(tp.lat,tp.lng,60).length)continue;          /* no restaurant anywhere near: don't ask Google about it */
+    if(GC.miss[gid]>Date.now()-30*864e5){R.cached++;continue}  /* Google didn't know this ID recently: use our map */
+    let g=null;try{g=await gDetails(gid)}catch(e){}
+    if(!g){R.noAnswer++;continue}
+    if(g.miss){GC.miss[gid]=Date.now();gcSave();R.noAnswer++;continue}
+    R.google++;
+    const nm=(g.displayName&&g.displayName.text)||'';
+    if(g.businessStatus==='CLOSED_PERMANENTLY'){GC.neg[gid]='closed';gcSave();applySkip(k,'Closed for good (Google)');continue}
+    if(!isFood(g.primaryType||null,g.types||[])){GC.neg[gid]='notfood';gcSave();applySkip(k,'Not a restaurant (Google)');continue}
+    const m=findOnMap(tp.lat,tp.lng,nm);
+    if(m){const L2=[pkey(m),m.n,m.lat,m.lng];LINKS.byId[gid]=L2;lkSave();applyLink(k,L2,'google');queueLink(gid,m,false)}
+    else{                                                  /* Google knows it, our map doesn't: show Google's name until you keep it */
+      clearSkip(k);GNAME.set(k,nm);tp.name=null;tp.osm=false;tp.ref=null;tp.src='google';tp.needName=true;tp.cands=[];
+      tp.alts=nearAlts(tp,null);tp.osmV=MATCH_V;tp.gV=MATCH_V;
+    }
+  }
+}
+/* you picked the right restaurant ("Not right?", "Were you at…", Search): remember it, and fix the shared link */
+function applyFix(k,p){
+  const tp=state.tplaces[k];if(!tp)return;
+  state.names[k]=p.n;tp.label=p.l||tp.label;if(p.c)tp.addr=p.c;tp.alts=[];tp.cands=[];tp.needName=false;clearSkip(k);GNAME.delete(k);
+  if(isFinite(p.lat)&&!k.startsWith('p:')){tp.ref=pkey(p);tp.refV=MATCH_V}
+  if(tp.placeId&&isFinite(p.lat)){LINKS.byId[tp.placeId]=[pkey(p),p.n,p.lat,p.lng];lkSave();queueLink(tp.placeId,p,true);flushLinks()}
+  resync(k);
+}
+/* the match report: what each place in your last import or re-check became, and where the name came from */
+function buildReport(keys,R){
+  const rows=[];
+  for(const k of keys){
+    const tp=state.tplaces[k];if(!tp)continue;const m=meta(k);
+    let st,src;
+    if(state.hidden.includes(k)){st='skip';src=tp.skipWhy||'Marked not food'}
+    else if(tp.cands&&tp.cands.length&&!m.named){st='ask';src='Asking “Were you at…”'}
+    else if(state.names[k]){st='named';src='Named by you'}
+    else if(tp.src==='link'){st='named';src='Shared link'}
+    else if(tp.src==='google'&&tp.needName){st='google';src='Google (not on our map yet)'}
+    else if(tp.src==='google'){st='named';src='Google'}
+    else if(tp.name){st='named';src='Our map'}
+    else{st='none';src='No match'}
+    rows.push({k,n:m.name,st,src});
+  }
+  const order={none:0,ask:1,google:2,named:3,skip:4};rows.sort((a,b)=>order[a.st]-order[b.st]);
+  state.report={at:Date.now(),google:R.google,linked:R.linked,cached:R.cached,noAnswer:R.noAnswer,left:gLeft(),key:!!GKEY,rows:rows.slice(0,300)};
+}
+function renderReport(){
+  const box=$('#reportPanel');if(!box)return;const r=state.report;box.hidden=!r;if(!r)return;
+  const c=s=>r.rows.filter(x=>x.st===s).length;
+  $('#reportSum').innerHTML=`<b>${r.rows.length}</b> places: ${c('named')} named, ${c('google')} named by Google only, ${c('ask')} asking you, ${c('none')} unmatched, ${c('skip')} skipped.<br>`+
+    (r.key?`Google lookups: <b>${r.google}</b> new, ${r.linked} from shared links, ${r.cached} already known. ${r.left} left today.${r.noAnswer?` ${r.noAnswer} couldn’t be looked up (daily limit or offline); they used our map.`:''}`:'Google lookups are off (no key set), so names came from our map.');
+  const tag={named:'',google:'g',ask:'a',none:'x',skip:'s'};
+  $('#reportList').innerHTML=r.rows.slice(0,150).map(x=>`<li class="rr ${tag[x.st]}"><span class="nm">${esc(x.n)}</span><span class="src">${esc(x.src)}</span></li>`).join('');
+}
+async function recheckMatches(btn){
+  const cut=NOW-state.params.window*DAY,live=new Set(state.visits.filter(v=>v.start>=cut&&v.source==='timeline').map(v=>v.key));
+  const keys=[...live].filter(k=>state.tplaces[k]&&!state.names[k]);
+  if(!keys.length){toast('Nothing to re-check. Import your Timeline first.');return}
+  if(btn)btn.disabled=true;
+  for(const k of keys){const tp=state.tplaces[k];tp.osmV=0;tp.gV=0;if(tp.osm){tp.name=null;tp.osm=false}}
+  await loadTilesFor(keys.map(k=>state.tplaces[k]));await loadLinks(tilesForKeys(keys));
+  const R={google:0,linked:0,cached:0,noAnswer:0};await resolveGoogle(keys,R);flushLinks();
+  matchPlaces(keys);buildReport(keys,R);save();refresh();
+  if(btn)btn.disabled=false;
+  toast(`Re-checked ${keys.length} places. ${R.google} new Google lookup${R.google===1?'':'s'}.`);
+}
+/* pick the right restaurant by name, for "Not right?" */
+let fixKey=null,fixList=[];
+function openFix(k){
+  const tp=state.tplaces[k];if(!tp)return;fixKey=k;menuVisit=null;
+  $('#menuBody').innerHTML=`<div class="grab"></div><div><p class="eyebrow">Not right?</p><h2 class="h2">Which restaurant was it?</h2></div>
+    <div class="addv"><div class="avrow"><input id="fxq" type="search" enterkeyhint="search" autocomplete="off" placeholder="Restaurant name" aria-label="Restaurant name"></div>
+    <ul class="avres" id="fxres" aria-label="Restaurants"></ul></div>
+    <button class="btn ghost" data-cmd="avclose" style="align-self:center">Cancel</button>`;
+  const sh=$('#menu');if(sh.hidden){lastFocus=document.activeElement;sh.hidden=false}
+  const q=$('#fxq');q.addEventListener('input',()=>{clearTimeout(avT);avT=setTimeout(fixSearch,150)});
+  loadTilesFor([tp]).then(fixSearch);
+}
+function fixSearch(){
+  const tp=state.tplaces[fixKey],box=$('#fxres');if(!tp||!box)return;
+  const q=($('#fxq').value||'').trim();
+  let res=q?[...FG.values()].flat().map(p=>({p,s:nameScore(p.n,q)+(nameKey(p.n).includes(nameKey(q))?.5:0)})).filter(x=>x.s>=.5).map(x=>{const d=metersBetween(tp,x.p);return {...x.p,d,s:x.s-Math.min(d,60000)/30000}}).sort((a,b)=>b.s-a.s)
+    :nearby(tp.lat,tp.lng,200);
+  fixList=res.slice(0,15);
+  const dist=d=>d<950?Math.round(d/5)*5+' m':(d/1609).toFixed(1)+' mi';
+  box.innerHTML=fixList.map((p,i)=>`<li><button data-cmd="fixpick" data-i="${i}"><b>${esc(p.n)}</b><small>${esc([p.l,p.c,dist(p.d)].filter(Boolean).join(' · '))}</small></button></li>`).join('')||`<li><button data-cmd="avclose"><b>No match nearby</b><small>Close this and use Name it to type the name.</small></button></li>`;
 }
 
 /* ---------- automatic visit detection (Android app only) ----------
@@ -1753,9 +1936,12 @@ async function importFiles(files){
   }
   const newKeys=[...new Set([...keep.values()].map(v=>v.key))];
   const tilesOk=await loadTilesFor(newKeys.map(k=>state.tplaces[k]).filter(Boolean));
+  const GR={google:0,linked:0,cached:0,noAnswer:0};
+  await loadLinks(tilesForKeys(newKeys));await resolveGoogle(newKeys,GR);flushLinks();
   const om=matchPlaces(newKeys);
+  buildReport(newKeys,GR);
   /* stops the map couldn't vouch for: keep the mealtime ones only */
-  if(state.mealOnly){const ok=k=>{const tp=state.tplaces[k];return !tp||tp.name||state.names[k]||tp.label||(tp.cands&&tp.cands.length)};
+  if(state.mealOnly){const ok=k=>{const tp=state.tplaces[k];return !tp||tp.name||tp.needName||state.names[k]||tp.label||(tp.cands&&tp.cands.length)};
     const before=state.visits.length;state.visits=state.visits.filter(v=>v.source!=='timeline'||ok(v.key)||state.myReviews.some(r=>r.visitId===v.id)||mealHour(hourOf(v.start))||mealHour(hourOf((v.start+v.end)/2)));
     const cut=before-state.visits.length;off+=cut;added-=cut}
   const kept=new Set([...keep.values()].map(v=>v.key).filter(k=>!state.hidden.includes(k))).size;
@@ -1780,7 +1966,7 @@ function go(t){
 /* after a swipe: rebuild scores, rankings, map and settings once swiping pauses, leaving the deck alone */
 let rfT=0;
 function refreshLater(){clearTimeout(rfT);rfT=setTimeout(()=>{renderGps();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderRank();renderFriends();renderLogic();renderMap()},600)}
-function refresh(){clearTimeout(rfT);renderGps();renderAcct();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
+function refresh(){clearTimeout(rfT);renderGps();renderAcct();renderReport();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
 
 /* ---------- shared backend (Supabase): used only when config.js has your project's keys ---------- */
 const CFG=window.NR_CONFIG||{};
@@ -1842,6 +2028,7 @@ async function finishSignIn(){
   myProfile=prof||{id:me.id,display_name:null,friend_code:'—'};
   state.demo=false;state.noSignIn=false;
   await syncUp();
+  flushLinks();
   await pullShared(true);
   if(!myProfile.display_name)askName();
 }
@@ -2118,12 +2305,14 @@ document.addEventListener('click',e=>{
       break}
     case 'pickalt':{
       const k=t.dataset.key,tp=state.tplaces[k],c=tp&&tp.alts&&tp.alts[+t.dataset.i];if(!c)break;
-      state.names[k]=c.n;tp.label=c.l;if(c.c)tp.addr=c.c;tp.alts=[];if(!k.startsWith('p:'))tp.ref=isFinite(c.la)?pkey({lat:c.la,lng:c.ln}):null;tp.refV=MATCH_V;resync(k);
-      save();refresh();toast('Changed to '+c.n);break}
+      applyFix(k,{n:c.n,l:c.l,c:c.c,lat:c.la,lng:c.ln});save();refresh();toast('Changed to '+c.n);break}
+    case 'fixsearch':openFix(t.dataset.key);break;
+    case 'fixpick':{const p=fixList[+t.dataset.i];if(p&&fixKey){applyFix(fixKey,p);closeMenu();save();refresh();toast('Changed to '+p.n)}break}
+    case 'recheck':recheckMatches(t);break;
     case 'pick':{
       const k=t.dataset.key,i=+t.dataset.i,tp=state.tplaces[k];if(!tp)break;
       const c=i>=0&&tp.cands&&tp.cands[i];
-      if(c){state.names[k]=c.n;tp.label=tp.label||c.l;if(c.c&&!tp.addr)tp.addr=c.c;if(!k.startsWith('p:'))tp.ref=isFinite(c.la)?pkey({lat:c.la,lng:c.ln}):null;tp.refV=MATCH_V;resync(k);toast('Named '+c.n)}
+      if(c){applyFix(k,{n:c.n,l:c.l,c:c.c,lat:c.la,lng:c.ln});toast('Named '+c.n)}
       else toast('Okay. Name it yourself, or tap Not food.');
       tp.cands=[];save();refresh();break}
     case 'wipe':{
@@ -2192,6 +2381,7 @@ if(MOVE_IN)unpackMove(MOVE_IN).then(o=>{
 loadManifest().then(async m=>{if(!m)return;refresh();
   const todo=Object.keys(state.tplaces).filter(k=>{const tp=state.tplaces[k];if(!tp||!covered(tp.lat,tp.lng))return false;const named=state.names[k]||(tp.name&&!tp.osm);return named?tp.refV!==MATCH_V&&!k.startsWith('p:'):tp.osmV!==MATCH_V});
   if(!todo.length)return;await loadTilesFor(todo.map(k=>state.tplaces[k]));
+  await loadLinks(tilesForKeys(todo));await resolveGoogle(todo,{google:0,linked:0,cached:0,noAnswer:0});flushLinks();
   const r=matchPlaces(todo);save();refresh();if(sb&&me)syncUp()});
 backendInit();
 })();
