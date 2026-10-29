@@ -1413,7 +1413,7 @@ function judge(la,ln,vs){
   if(O&&O.d<=NEAR&&DRINKS.test(O.cat))return {food:'bar',label:O.cat};
   return {food:false,why:O&&O.d<=NEAR?O.cat:'No restaurant within 15 m'};
 }
-const MATCH_V=4,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
+const MATCH_V=5,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
 function matchPlaces(keys){
   let auto=0,ask=0,skip=0;
   if(!TM)return {auto,ask,skip};
