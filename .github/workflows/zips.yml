@@ -1,0 +1,30 @@
+name: ZIP codes
+# Downloads ZIP code centers from the US Census (public domain) and saves the West's into site/places/zips.json.
+# Runs when tools/zips/request changes on the dev branch.
+on:
+  push:
+    branches: [dev]
+    paths: ['tools/zips/request']
+permissions:
+  contents: write
+jobs:
+  zips:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build zips.json
+        run: |
+          set -e
+          curl -sSfL -A "Mozilla/5.0 (normal-reviews build)" -o z.zip https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2023_Gazetteer/2023_Gaz_zcta_national.zip
+          unzip -o -q z.zip
+          python3 tools/zips/build.py 2023_Gaz_zcta_national.txt site/places/zips.json
+      - name: Save it
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add site/places/zips.json
+          git commit -m "Add ZIP code centers (US Census 2023 ZCTA gazetteer)" || exit 0
+          git push
+      - name: Show why it failed
+        if: failure()
+        run: echo "::error title=ZIP download failed::Check the Census URL"
