@@ -1,7 +1,7 @@
 name: Android app
 # Builds the Android app (APK) whenever the app wrapper changes.
-# dev  → "NR Dev" app that opens https://dev--normalreviews.netlify.app  (release tag android-dev)
-# main → "Normal Reviews" app that opens https://normalreviews.netlify.app (release tag android-latest)
+# dev  → "NR Dev" app that opens https://dev.normal-reviews.pages.dev  (release tag android-dev)
+# main → "Normal Reviews" app that opens https://normal-reviews.pages.dev (release tag android-latest)
 on:
   push:
     branches: [dev, main]
@@ -23,9 +23,9 @@ jobs:
       - name: Pick dev or live settings
         run: |
           if [ "$GITHUB_REF_NAME" = "main" ]; then
-            { echo "APP_ID=com.normalreviews.app"; echo "APP_NAME=Normal Reviews"; echo "APP_URL=https://normalreviews.netlify.app"; echo "TAG=android-latest"; echo "APK=normal-reviews.apk"; } >> "$GITHUB_ENV"
+            { echo "APP_ID=com.normalreviews.app"; echo "APP_NAME=Normal Reviews"; echo "APP_URL=https://normal-reviews.pages.dev"; echo "TAG=android-latest"; echo "APK=normal-reviews.apk"; } >> "$GITHUB_ENV"
           else
-            { echo "APP_ID=com.normalreviews.app.dev"; echo "APP_NAME=NR Dev"; echo "APP_URL=https://dev--normalreviews.netlify.app"; echo "TAG=android-dev"; echo "APK=normal-reviews-dev.apk"; } >> "$GITHUB_ENV"
+            { echo "APP_ID=com.normalreviews.app.dev"; echo "APP_NAME=NR Dev"; echo "APP_URL=https://dev.normal-reviews.pages.dev"; echo "TAG=android-dev"; echo "APK=normal-reviews-dev.apk"; } >> "$GITHUB_ENV"
           fi
       - name: Check the signing password is set
         run: |

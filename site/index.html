@@ -673,6 +673,32 @@ function sampleVisits(){
 function fresh(){return {v:1,seed:7,params:{...DEFAULTS},visits:[],tplaces:{},myReviews:[],tokens:1,sinceToken:0,hidden:[],names:{},undo:[],importInfo:null,mode:'global',friends:[],drafts:{},skipped:{},dismissed:[],mapFilter:'all',demo:false,mealOnly:true,allow:[],bayOnly:true}}
 function load(){try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.v===1)return s}catch(e){}return null}
 function save(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
+/* ---------- moving from the old Netlify address ----------
+   The old address forwards to the new one and carries this phone's saved data along inside the link (#move=…),
+   which browsers never send to any server. The new address merges it in once. */
+const MOVE_IN=location.hash.startsWith('#move=')?location.hash.slice(6):null;
+const MOVE_TO=location.hostname==='normalreviews.netlify.app'?'https://normal-reviews.pages.dev/'
+  :/--normalreviews\.netlify\.app$/.test(location.hostname)?'https://dev.normal-reviews.pages.dev/':null;
+async function packMove(){
+  const raw=JSON.stringify({s:localStorage.getItem('normal-reviews.v1'),g:localStorage.getItem('normal-reviews.gps')});
+  const buf=await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  let bin='';const u=new Uint8Array(buf);for(let i=0;i<u.length;i+=8192)bin+=String.fromCharCode.apply(null,u.subarray(i,i+8192));
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function unpackMove(t){
+  const b=atob(t.replace(/-/g,'+').replace(/_/g,'/')),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+  return JSON.parse(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+}
+if(MOVE_TO){
+  const go=async()=>{let h='';try{if(localStorage.getItem('normal-reviews.v1'))h='#move='+await packMove()}catch(e){}location.replace(MOVE_TO+h)};
+  document.addEventListener('DOMContentLoaded',()=>{
+    const d=document.createElement('div');
+    d.setAttribute('style','position:fixed;inset:0;z-index:999;display:grid;place-items:center;padding:24px;background:#f3f4f1;color:#16181f;font:16px/1.45 system-ui,sans-serif;text-align:center');
+    d.innerHTML='<div><h1 style="font-size:24px;margin:0 0 8px">Normal Reviews has moved</h1><p style="margin:0 0 16px">Taking you and your saved visits to the new address…</p><button style="font:600 16px system-ui;padding:12px 20px;border-radius:12px;border:0;background:#2f45c8;color:#fff">Go now</button></div>';
+    d.querySelector('button').onclick=go;document.body.appendChild(d);
+  });
+  setTimeout(go,1200);
+}
 let state=load()||fresh();
 const base=fresh();
 for(const k of Object.keys(base)) if(state[k]===undefined) state[k]=base[k];
@@ -2146,6 +2172,19 @@ buildDials();
 refresh();
 go((location.hash||'').slice(1)||'rate');
 photoInit().then(()=>{if(PH.mem.size)refresh()});
+if(MOVE_IN)unpackMove(MOVE_IN).then(o=>{
+  const old=o&&o.s?JSON.parse(o.s):null;if(!old||old.v!==1)return;
+  if(!state.visits.length&&!state.myReviews.length){const keep={noSignIn:state.noSignIn};state=Object.assign(fresh(),old,keep)}
+  else{
+    const vid=new Set(state.visits.map(v=>v.id));for(const v of old.visits||[])if(!vid.has(v.id))state.visits.push(v);
+    const rid=new Set(state.myReviews.map(r=>r.visitId));for(const r of old.myReviews||[])if(!rid.has(r.visitId))state.myReviews.push(r);
+    for(const k in old.tplaces||{})if(!state.tplaces[k])state.tplaces[k]=old.tplaces[k];
+    for(const k in old.names||{})if(!(k in state.names))state.names[k]=old.names[k];
+    for(const f of ['hidden','dismissed','allow'])for(const x of old[f]||[])if(!state[f].includes(x))state[f].push(x);
+  }
+  if(o.g&&!localStorage.getItem(GLS))try{localStorage.setItem(GLS,o.g);GPS=gpsLoad()}catch(e){}
+  save();refresh();{const nv=state.visits.length,nr=state.myReviews.length;toast(`Moved ${nv} visit${nv===1?'':'s'} and ${nr} rating${nr===1?'':'s'} to the new address.`)}
+}).catch(()=>toast('Couldn’t bring your saved visits over. Re-import your Timeline here.'));
 /* re-check saved stops against the restaurant map (only the areas you've been, and only places not yet checked) */
 loadManifest().then(async m=>{if(!m)return;refresh();
   const todo=Object.keys(state.tplaces).filter(k=>{const tp=state.tplaces[k];if(!tp||!covered(tp.lat,tp.lng))return false;const named=state.names[k]||(tp.name&&!tp.osm);return named?tp.refV!==MATCH_V&&!k.startsWith('p:'):tp.osmV!==MATCH_V});

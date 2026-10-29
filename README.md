@@ -2,7 +2,7 @@
 
 Honest restaurant scores from verified visits, curved so a 3.00 means normal.
 
-- `site/` is the web app. Netlify publishes this folder to https://normalreviews.netlify.app
+- `site/` is the web app. Cloudflare Pages publishes this folder: `main` → https://normal-reviews.pages.dev, `dev` → https://dev.normal-reviews.pages.dev (the old Netlify address forwards there)
   - `index.html`: the whole app (screens, scoring, Timeline import, matching, Supabase sync)
   - `config.js`: Supabase project URL and publishable key (public by design)
   - `places/`: restaurant and other-place maps for CA, OR, WA, NV in 0.25° tiles, fetched only

@@ -6,7 +6,7 @@ const cfg = {
   appName: env.APP_NAME || 'Normal Reviews',
   webDir: 'www',
   // The app opens the hosted site, so ordinary updates arrive without reinstalling.
-  server: { url: env.APP_URL || 'https://normalreviews.netlify.app', androidScheme: 'https', cleartext: false },
+  server: { url: env.APP_URL || 'https://normal-reviews.pages.dev', androidScheme: 'https', cleartext: false },
   // Keeps location updates flowing to the page while the app is in the background (background-geolocation plugin docs).
   android: { useLegacyBridge: true }
 };
