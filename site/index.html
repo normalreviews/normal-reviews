@@ -324,6 +324,8 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .codebox{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface-2);border-radius:12px;padding:10px 12px}
 .codebox b{display:block;font:600 24px/1.1 var(--f-mono);letter-spacing:.12em}
 .addf,.acctf{display:flex;gap:8px}
+.acctf.col{flex-direction:column}.acctf.col input{flex:none}.acctf.col .btns{margin:2px 0 0}
+#acctBody .lnks{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 .addf input,.acctf input{flex:1;min-width:0;font:600 16px var(--f-body);padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
 .addf input:focus,.acctf input:focus{outline:none;border-color:var(--accent)}
 #acctBody{gap:14px}
@@ -478,7 +480,7 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <div class="listhead"><h2 class="h2">Your account</h2><span class="fine" id="acctEmail"></span></div>
         <div class="codebox"><div><span class="fine">Your friend code</span><b id="myCode">—</b></div><button class="btn" data-cmd="copycode">Copy</button></div>
         <form id="addFriendForm" class="addf"><input id="friendCode" placeholder="Friend’s code" maxlength="10" autocomplete="off" autocapitalize="characters" aria-label="Friend’s code"><button class="btn primary">Add friend</button></form>
-        <div class="btns"><button class="btn ghost" data-cmd="renameme">Change my name</button><button class="btn ghost" data-cmd="signout">Sign out</button><button class="btn danger" data-cmd="deleteshared" id="delSharedBtn">Delete my shared data</button></div>
+        <div class="btns"><button class="btn ghost" data-cmd="renameme">Change my name</button><button class="btn ghost" data-cmd="setpw">Set password</button><button class="btn ghost" data-cmd="signout">Sign out</button><button class="btn danger" data-cmd="deleteshared" id="delSharedBtn">Delete my shared data</button></div>
         <p class="fine"><a href="privacy.html" target="_blank" rel="noopener">What’s shared and what isn’t</a></p>
       </div>
       <div class="panel"><div class="listhead"><h2 class="h2">From friends</h2><span class="fine" id="feedNote"></span></div><ul class="feed" id="feed"></ul></div>
@@ -1563,12 +1565,17 @@ const CFG=window.NR_CONFIG||{};
 const SHARED=!!(CFG.url&&CFG.key&&!/PASTE/i.test(CFG.url+CFG.key));
 let sb=null,me=null,myProfile=null,friendsList=[],lastPull=0,delArmed=0;
 const AUTH_IN_URL=/access_token=|error_description=|refresh_token=/.test(location.hash);
-let authUrlPending=AUTH_IN_URL;
+let authUrlPending=AUTH_IN_URL,recovering=/type=recovery/.test(location.hash);
 const dayStr=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const friendly=err=>{const m=(err&&err.message)||String(err);
   if(/rate limit|security purposes|too many/i.test(m))return 'Too many sign-in emails were sent. Wait a few minutes and try again.';
   if(/(token|otp).*(expired|invalid)|(expired|invalid).*(token|otp)/i.test(m))return 'That code didn’t work. Check it, or ask for a new one.';
   if(/failed to fetch|network/i.test(m))return 'No connection. Check your internet and try again.';
+  if(/invalid login credentials/i.test(m))return 'Wrong email or password. If you used to sign in with an email link, tap “Forgot password?” to set one.';
+  if(/email not confirmed/i.test(m))return 'Confirm your email first: open the email we sent and tap the link.';
+  if(/already registered|already been registered|already exists/i.test(m))return 'That email already has an account. Sign in instead, or tap “Forgot password?”.';
+  if(/password.*(at least|short|weak)|(weak|short).*password/i.test(m))return 'Pick a longer password: at least 8 characters.';
+  if(/same.*password|different from the old/i.test(m))return 'That’s your current password. Pick a new one.';
   return m};
 
 async function backendInit(){
@@ -1579,6 +1586,7 @@ async function backendInit(){
   if(authUrlPending){authUrlPending=false;try{history.replaceState(null,'',location.pathname+'#rate')}catch(e){}}
   me=data&&data.session?data.session.user:null;
   sb.auth.onAuthStateChange((ev,session)=>{
+    if(ev==='PASSWORD_RECOVERY'){recovering=true;setTimeout(askPassword,0)}
     const id=session&&session.user?session.user.id:null;
     if(id!==(me&&me.id)){me=session?session.user:null;me?afterSignIn():signedOut()}
   });
@@ -1597,7 +1605,8 @@ async function afterSignIn(){
   state.demo=false;state.noSignIn=false;
   await syncUp();
   await pullShared(true);
-  if(!myProfile.display_name)askName();
+  if(recovering)askPassword();
+  else if(!myProfile.display_name)askName();
 }
 
 /* account sheet */
@@ -1607,19 +1616,50 @@ function acctOpen(html){
   const f=s.querySelector('input');if(f)f.focus({preventScroll:true});
 }
 function closeAcct(){$('#acct').hidden=true}
+const REDIR=()=>location.origin+location.pathname;
+let lastEmail='';
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='email')lastEmail=e.target.value.trim()});
 function showSignIn(step,email){
   if(!sb)return;
   if(step==='code'){
     acctOpen(`<h2 class="h2">Check your email</h2>
       <p class="fine">We sent a sign-in email to <b>${esc(email)}</b>. Open it on this phone and tap the sign-in link; you’ll be signed in automatically. It can take a minute, so check spam too.</p><p class="fine">If the email shows a number code instead, type it here:</p>
       <form class="acctf" data-form="code" data-email="${esc(email)}"><input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code" aria-label="Sign-in code" required><button class="btn primary">Sign in</button></form>
-      <button class="lnk" data-cmd="signin">Use a different email</button>`);
+      <button class="lnk" data-cmd="signin">Back to sign in</button>`);
+    return;
+  }
+  if(step==='link'){
+    acctOpen(`<h2 class="h2">Sign in with an email link</h2>
+      <p class="fine">No password needed. We’ll email you a link that signs you in on this phone.</p>
+      <form class="acctf" data-form="email"><input id="email" type="email" autocomplete="email" placeholder="you@example.com" value="${esc(email||lastEmail)}" aria-label="Email" required><button class="btn primary">Email me a link</button></form>
+      <button class="lnk" data-cmd="signin">Use a password instead</button>`);
+    return;
+  }
+  if(step==='sent'){
+    acctOpen(`<h2 class="h2">Check your email</h2>
+      <p class="fine">${email}</p>
+      <button class="lnk" data-cmd="signin">Back to sign in</button>`);
     return;
   }
   acctOpen(`<h2 class="h2">Rate with friends</h2>
-    <p class="fine">Sign in with your email to share ratings with your testers. Your Timeline and visits stay on this phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
-    <form class="acctf" data-form="email"><input id="email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="Email" required><button class="btn primary">Email me a sign-in link</button></form>
-    <button class="lnk" data-cmd="notnow">Not now, use it just for me</button>`);
+    <p class="fine">Sign in to share ratings with your testers. Your Timeline and visits stay on this phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
+    <form class="acctf col" data-form="pw">
+      <input id="email" type="email" autocomplete="username" placeholder="Email" value="${esc(email||lastEmail)}" aria-label="Email" required>
+      <input id="pw" type="password" autocomplete="current-password" placeholder="Password (8+ characters)" aria-label="Password" minlength="8" required>
+      <div class="btns"><button class="btn primary" value="in">Sign in</button><button class="btn" value="up">Create account</button></div>
+    </form>
+    <div class="lnks"><button class="lnk" data-cmd="forgotpw">Forgot password?</button><button class="lnk" data-cmd="linksignin">Email me a sign-in link instead</button><button class="lnk" data-cmd="notnow">Not now, use it just for me</button></div>`);
+}
+function askPassword(){
+  if(!me)return;
+  acctOpen(`<h2 class="h2">${recovering?'Choose a new password':'Set a password'}</h2>
+    <p class="fine">Use it with <b>${esc(me.email||'your email')}</b> to sign in on any phone.</p>
+    <form class="acctf col" data-form="setpw">
+      <input type="email" autocomplete="username" value="${esc(me.email||'')}" hidden aria-hidden="true">
+      <input id="newpw" type="password" autocomplete="new-password" placeholder="New password (8+ characters)" aria-label="New password" minlength="8" required>
+      <div class="btns"><button class="btn primary">Save password</button></div>
+    </form>
+    <button class="lnk" data-cmd="closeacct">Not now</button>`);
 }
 function askName(){
   acctOpen(`<h2 class="h2">What should friends call you?</h2>
@@ -1629,11 +1669,30 @@ function askName(){
 document.addEventListener('submit',async e=>{
   const f=e.target.closest('.acctf,#addFriendForm');if(!f||!sb)return;
   e.preventDefault();
-  const btn=f.querySelector('button');btn.disabled=true;
+  const btn=e.submitter||f.querySelector('button');btn.disabled=true;
   try{
-    if(f.dataset.form==='email'){
+    if(f.dataset.form==='pw'){
+      const email=f.querySelector('#email').value.trim(),password=f.querySelector('#pw').value;
+      if(password.length<8)throw new Error('password too short');
+      if(btn.value==='up'){
+        const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:REDIR()}});
+        if(error)throw error;
+        if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length)throw new Error('already registered');
+        if(!data.session)showSignIn('sent',`We sent a confirmation email to <b>${esc(email)}</b>. Tap the link in it on this phone and you’re in. Check spam if it doesn’t arrive in a minute.`);
+      }else{
+        const {error}=await sb.auth.signInWithPassword({email,password});
+        if(error)throw error;
+      }
+    }else if(f.dataset.form==='setpw'){
+      const password=f.querySelector('#newpw').value;
+      if(password.length<8)throw new Error('password too short');
+      const {error}=await sb.auth.updateUser({password});
+      if(error)throw error;
+      recovering=false;closeAcct();toast('Password saved. Use it to sign in on any phone.');
+      if(myProfile&&!myProfile.display_name)askName();
+    }else if(f.dataset.form==='email'){
       const email=f.querySelector('#email').value.trim();
-      const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+      const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:REDIR()}});
       if(error)throw error;
       showSignIn('code',email);
     }else if(f.dataset.form==='code'){
@@ -1794,7 +1853,18 @@ document.addEventListener('click',e=>{
       if(!state.allow.includes(k))state.allow.push(k);
       const tp=state.tplaces[k];if(tp){tp.skipWhy=null;tp.osmV=0}
       loadTilesFor(tp?[tp]:[]).then(()=>{matchPlaces([k]);save();refresh()});save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
-    case 'signin':showSignIn();break;
+    case 'signin':showSignIn(null,($('#email')||{value:lastEmail}).value);break;
+    case 'linksignin':showSignIn('link',($('#email')||{value:lastEmail}).value);break;
+    case 'setpw':askPassword();break;
+    case 'closeacct':recovering=false;closeAcct();if(myProfile&&!myProfile.display_name)askName();break;
+    case 'forgotpw':{
+      const em=(($('#email')||{value:lastEmail}).value||'').trim();
+      if(!/.+@.+\..+/.test(em)){toast('Type your email first, then tap Forgot password.');const i=$('#email');if(i)i.focus();break}
+      t.disabled=true;
+      sb.auth.resetPasswordForEmail(em,{redirectTo:REDIR()}).then(({error})=>{
+        t.disabled=false;if(error){toast(friendly(error));return}
+        showSignIn('sent',`If <b>${esc(em)}</b> has an account, we sent it a link to choose a new password. Open it on this phone. Check spam if it doesn’t arrive in a minute.`);
+      });break}
     case 'notnow':state.noSignIn=true;save();closeAcct();toast('You can sign in anytime from the Friends tab.');break;
     case 'signout':if(sb)sb.auth.signOut().then(()=>{state.noSignIn=true;save();toast('Signed out. Your ratings stay on this phone.')});break;
     case 'renameme':askName();break;
