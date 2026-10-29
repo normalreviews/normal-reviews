@@ -396,7 +396,7 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     <p class="brand"><svg viewBox="0 0 30 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 16c4 0 5-1.5 7-6s3.5-8 6-8 4 3.5 6 8 3 6 7 6"/></svg>Normal Reviews</p>
     <div class="hright">
       <span class="tokens" id="tokens" title="Super Likes"></span>
-      <button class="gear" data-tab="logic" aria-label="Logic and settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h4M12 17h8"/><circle cx="15" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+      <button class="gear" data-tab="logic" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
   </header>
 
@@ -506,9 +506,14 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
     <section class="view gutter" id="v-logic" aria-label="Logic" hidden>
       <div>
-        <p class="eyebrow">Prototype controls</p>
-        <h1 class="h1">Logic</h1>
-        <p class="lede">Every number in the app comes from these rules. Move a dial and the rankings update immediately.</p>
+        <h1 class="h1">Settings</h1>
+        <p class="lede">Your account, your Timeline and what’s saved on this phone.</p>
+      </div>
+
+      <div class="panel" id="setAcct" hidden>
+        <h2 class="h2">Account</h2>
+        <p class="status" id="setAcctLine"></p>
+        <div class="btns" id="setAcctBtns"></div>
       </div>
 
       <div class="panel">
@@ -524,31 +529,14 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <label class="check" for="mealOnly"><input type="checkbox" id="mealOnly"> Only stops around meal times (7–10:30am, 11am–3pm, 5–10:30pm)</label>
         <label class="check" for="bayOnly"><input type="checkbox" id="bayOnly"> Only stops in California, Oregon, Washington and Nevada; trips elsewhere are ignored</label>
         <p class="status" id="importStatus"></p>
-        <p class="fine">The file is read on this phone and nothing is uploaded. Restaurants are named from an open map of places (Overture Maps and OpenStreetMap). The app downloads that map only for the areas you’ve been, about 25 km at a time. A stop counts only if a restaurant is within 15 m of it; everything else goes to Skipped places, where you can restore it. Home and work are skipped automatically. Re-import anytime; visits you already have are not duplicated.</p>
+        <p class="fine">The file is read on this phone and nothing is uploaded. Restaurants are named from an open map of places (Overture Maps and OpenStreetMap). The app downloads that map only for the areas you’ve been, about 25 km at a time. A stop counts only if you stayed 10+ minutes and a restaurant is within 8 m of it; everything else goes to Skipped places, where you can restore it. Home and work are skipped automatically. Re-import anytime; visits you already have are not duplicated.</p>
       </div>
 
       <div class="panel" id="gpsPanel" hidden>
         <h2 class="h2">Automatic visit detection</h2>
         <p class="status" id="gpsStatus"></p>
         <div class="btns"><button class="btn" id="gpsBtn" data-cmd="gps">Turn on</button></div>
-        <p class="fine">When you stay somewhere 20+ minutes, your phone checks it against the restaurant map. Restaurant visits become cards; every other stop is forgotten right away. When 5 visits are waiting, you get a reminder (at most once a day). No location history is kept on the phone or sent anywhere. Android shows a small notification while this is on. It uses some battery; turn it off anytime.</p>
-      </div>
-
-      <div class="panel">
-        <h2 class="h2">Scoring dials</h2>
-        <div class="dials" id="dials"></div>
-        <div class="btns"><button class="btn ghost" data-cmd="defaults">Restore defaults</button></div>
-      </div>
-
-      <div class="panel chart">
-        <h2 class="h2">Decay curve</h2>
-        <div id="decay"></div>
-        <p class="fine" id="decayNote"></p>
-      </div>
-
-      <div class="panel">
-        <h2 class="h2">The formula</h2>
-        <ol class="math" id="formula"></ol>
+        <p class="fine">When you stay somewhere 10+ minutes, your phone checks it against the restaurant map. Restaurant visits become cards; every other stop is forgotten right away. When 5 visits are waiting, you get a reminder (at most once a day). No location history is kept on the phone or sent anywhere. Android shows a small notification while this is on. It uses some battery; turn it off anytime.</p>
       </div>
 
       <div class="panel">
@@ -666,7 +654,8 @@ function genWorld(seed){
 
 /* ---------- state ---------- */
 const LS='normal-reviews.v1';
-const DEFAULTS={halfLife:30,window:90,prior:2,spread:0.5,minDwell:20,queueDays:90};
+/* the rules, the same for everyone: full weight for 60 days, then fading to zero at 180; stops of 10+ minutes */
+const DEFAULTS={fullDays:60,window:180,prior:2,spread:0.5,minDwell:10,queueDays:90};
 const DEFAULT_FRIENDS=['u0','u2','u5','u7','u9','u12','u14','u17','u20','u23'];
 function sampleVisits(){
   const S=[['r:kura',2,19,30,75],['r:birria',4,13,10,45],['r:nonna',6,20,0,95],['g:sample-1',8,18,40,60],['r:pho',11,12,15,50],['r:copper',15,19,0,80],['r:ramen',18,12,30,40],['r:saffron',23,19,15,70],['r:ondo',27,20,0,105]];
@@ -704,7 +693,7 @@ if(MOVE_TO){
 let state=load()||fresh();
 const base=fresh();
 for(const k of Object.keys(base)) if(state[k]===undefined) state[k]=base[k];
-state.params={...DEFAULTS,...state.params};
+state.params={...DEFAULTS};
 if(!state.tiersV2){state.myReviews.forEach(r=>{r.tier={1:0,2:1,3:3,4:4}[r.tier]??r.tier});state.tiersV2=true}
 /* one-time cleanup: drop all demo data, keep anything from a real Timeline */
 if(!state.cleanV1){
@@ -760,14 +749,14 @@ const simName=(a,b)=>{a=a.toLowerCase().replace(/[^a-z0-9]/g,'');b=b.toLowerCase
 function findRef(tp,name){if(!name||!isFinite(tp.lat))return null;const c=nearby(tp.lat,tp.lng,60).find(p=>simName(p.n,name));return c?pkey(c):null}
 function compute(only){
   rebuildAlias();
-  const P=state.params, lam=Math.LN2/P.halfLife, hid=new Set(state.hidden);
+  const P=state.params, hid=new Set(state.hidden);
   const mine=state.myReviews.filter(r=>!hid.has(r.key)).map(r=>({id:r.id,user:'me',key:canon(r.key),tier:r.tier,ts:r.ts,comment:r.comment||null,photo:r.photo||null,photoPath:r.photoPath||null,reasons:r.reasons||null}));
   const all=(only?world.reviews.filter(r=>only.has(r.user)):world.reviews).concat(mine);
   const by=new Map();let gw=0,gx=0,active=0,expired=0;
   for(const r of all){
     let p=by.get(r.key);
     if(!p){p={key:r.key,sw:0,sx:0,n:0,cw:[0,0,0,0,0],all:[],people:new Set(),mine:null,problems:0,rc:{}};by.set(r.key,p)}
-    const age=Math.max(0,(NOW-r.ts)/DAY), w=age>P.window?0:Math.exp(-lam*age);
+    const age=Math.max(0,(NOW-r.ts)/DAY), w=age<=P.fullDays?1:age>=P.window?0:(P.window-age)/(P.window-P.fullDays);
     r.age=age;r.w=w;p.all.push(r);
     if(r.user==='me'&&(!p.mine||r.ts>p.mine.ts))p.mine=r;
     if(w>0){p.sw+=w;p.sx+=w*r.tier;p.n++;p.cw[r.tier]+=w;p.people.add(r.user);gw+=w;gx+=w*r.tier;active++;
@@ -1235,12 +1224,6 @@ function openDetail(key){
     if(p.problems){const rs=Object.entries(p.rc).sort((a,b)=>b[1]-a[1]).map(([k,c])=>`${esc(k)}${c>1?' ×'+c:''}`).join(', ');
       html+=`<p class="probbox"><b>${p.problems} of ${p.n} visits</b> in the last ${P.window} days had a problem${rs?`: ${rs}`:''}.</p>`}
     html+=`<div>${distHTML(p,true)}<div class="legend">${TLIST.filter(t=>p.cw[t]>0).map(t=>`<span class="t${t}"><i></i>${TIERS[t].label} ${(p.cw[t]/p.sw*100).toFixed(0)}%</span>`).join('')}</div></div>`;
-    html+=`<div class="panel"><h3 class="h2">How this score was made</h3><ol class="math">
-      <li><span>Each rating counts <code>0.5^(days ÷ ${P.halfLife})</code>. These ${p.n} ratings add up to <code>${p.sw.toFixed(2)}</code> full-strength ratings.</span></li>
-      <li><span>Their weighted average tier is <code>${p.wavg.toFixed(2)}</code> on the 0 to 4 scale (0 Problem, 1 OK, 2 Good, 3 Great, 4 Super Like).</span></li>
-      <li><span>Blend with the town average <code>${S.m.toFixed(2)}</code> at prior strength ${P.prior}: <code>(${P.prior} × ${S.m.toFixed(2)} + ${p.sx.toFixed(2)}) ÷ (${P.prior} + ${p.sw.toFixed(2)}) = ${p.raw.toFixed(3)}</code></span></li>
-      <li><span>Across all ${L.length} places that number averages <code>${S.mu.toFixed(3)}</code> with spread <code>σ ${S.sd.toFixed(3)}</code>, so this place sits at <code>z ${sign(p.z)}</code>.</span></li>
-      <li><span>Score <code>= 3.00 + ${P.spread.toFixed(2)} × ${p.z.toFixed(2)} = ${p.score.toFixed(2)}</code>, kept between 1.00 and 5.00.</span></li></ol></div>`;
   }else{
     html+=`<p class="fine">${isF()?`None of your friends rated this in the last ${P.window} days. Switch to Global to see everyone’s ratings.`:`No ratings from the last ${P.window} days, so this place has no score right now.`}</p>`;
   }
@@ -1371,48 +1354,9 @@ function renderMap(refit){
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>paintMap());
 
 /* ---------- logic ---------- */
-const DIALS=[
-  ['halfLife','Half-life',7,90,1,v=>v+' days','After this many days a rating counts half as much.'],
-  ['window','Drop-off',30,180,5,v=>v+' days','Ratings older than this stop counting at all.'],
-  ['prior','Prior strength',0,10,.5,v=>(+v).toFixed(1),'How many ratings’ worth of pull toward the town average every place starts with. Keeps one lucky rating from topping the chart.'],
-  ['spread','Curve spread',.3,1,.05,v=>(+v).toFixed(2),'How far one standard deviation moves a score away from 3.00. Lower is more Tabelog-like.'],
-  ['minDwell','Minimum stay',5,60,5,v=>v+' min','Shorter Timeline stops are ignored on the next import.'],
-  ['queueDays','Queue window',7,180,1,v=>v+' days','How far back visits show up in your swipe deck.']
-];
-function buildDials(){
-  $('#dials').innerHTML=DIALS.map(([k,l,mn,mx,st,f,h])=>`<div class="dial"><label for="d-${k}">${l}<output id="o-${k}">${f(state.params[k])}</output></label><input type="range" id="d-${k}" data-dial="${k}" min="${mn}" max="${mx}" step="${st}" value="${state.params[k]}"><p>${h}</p></div>`).join('');
-}
-function syncDials(){DIALS.forEach(([k,,,,,f])=>{const i=$('#d-'+k);if(i){i.value=state.params[k];$('#o-'+k).textContent=f(state.params[k])}})}
-function decaySVG(){
-  const P=state.params,W=340,H=160,L=34,R=12,TOP=14,BASE=126,maxD=P.window+Math.max(10,P.window*.12);
-  const x=d=>L+d/maxD*(W-L-R), y=w=>BASE-w*(BASE-TOP), wt=d=>Math.pow(.5,d/P.halfLife);
-  let d='M'+x(0)+' '+y(1);for(let t=1;t<=P.window;t++)d+='L'+x(t).toFixed(1)+' '+y(wt(t)).toFixed(1);
-  d+='L'+x(P.window).toFixed(1)+' '+y(0)+'L'+x(maxD).toFixed(1)+' '+y(0);
-  const area=d+'L'+x(0)+' '+BASE+'Z';
-  let g=`<line x1="${L}" x2="${W-R}" y1="${BASE}" y2="${BASE}" stroke="var(--line)"/>`;
-  [1,.5].forEach(w=>g+=`<line x1="${L}" x2="${W-R}" y1="${y(w)}" y2="${y(w)}" stroke="var(--line)" stroke-dasharray="2 4"/><text class="ax" x="${L-6}" y="${y(w)+3}" text-anchor="end">${w*100}%</text>`);
-  g+=`<text class="ax" x="${L-6}" y="${BASE+3}" text-anchor="end">0</text>`;
-  g+=`<path d="${area}" fill="var(--accent)" fill-opacity=".1"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>`;
-  const hx=x(Math.min(P.halfLife,P.window));
-  if(P.halfLife<=P.window)g+=`<circle cx="${hx}" cy="${y(.5)}" r="4" fill="var(--accent)"/><text class="lab" x="${hx+7}" y="${y(.5)-7}">half at ${P.halfLife} d</text>`;
-  const ew=wt(P.window);
-  g+=`<circle cx="${x(P.window)}" cy="${y(ew)}" r="3.5" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><text class="lab" x="${x(P.window)-6}" y="${Math.min(y(ew)-8,BASE-30)}" text-anchor="end">drops out at ${P.window} d</text>`;
-  [0,P.halfLife<=P.window?P.halfLife:null,P.window].forEach(v=>{if(v!=null)g+=`<text class="ax" x="${x(v)}" y="${BASE+16}" text-anchor="middle">${v}</text>`});
-  g+=`<text class="ax" x="${W-R}" y="${BASE+30}" text-anchor="end">days since the meal</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating weight falls from 100% to half at ${P.halfLife} days and drops to zero at ${P.window} days">${g}</svg>`;
-}
 function renderLogic(){
-  const P=state.params, wt=d=>Math.pow(.5,d/P.halfLife), pc=v=>{const n=v*100;return (n>=10?Math.round(n):n.toFixed(1))+'%'};
+  const P=state.params;
   document.querySelectorAll('.qd').forEach(e=>e.textContent=P.queueDays);
-  $('#decay').innerHTML=decaySVG();
-  const marks=[30,60].filter(d=>d<P.window);
-  $('#decayNote').textContent=`A rating from today counts 100%. ${marks.map(d=>`At ${d} days it counts ${pc(wt(d))}`).join(', ')}${marks.length?', and right':'Right'} before ${P.window} days it counts ${pc(wt(P.window))}. After that it is gone.`;
-  $('#formula').innerHTML=`
-   <li><span>Swipes become tiers: <code>left 1 OK</code> <code>down 2 Good</code> <code>right 3 Great</code> <code>up 4 Super Like</code>. A long press offers <code>0 Problem</code> with optional reasons. Super Like costs a token. You start with 1, earn 1 every 10 ratings, and hold at most 3.</span></li>
-   <li><span>Every rating is dated to the meal, not the swipe, and weighted <code>w = 0.5^(age ÷ ${P.halfLife})</code>. Older than ${P.window} days, <code>w = 0</code>.</span></li>
-   <li><span>Each place gets a smoothed average <code>(${P.prior} × town avg + Σ w·tier) ÷ (${P.prior} + Σ w)</code>. Town average right now: <code>${S.m.toFixed(2)}</code>.</span></li>
-   <li><span>Those averages are standardized across all places, <code>z = (avg − mean) ÷ σ</code>, so a score says where a place stands against town, not how generous its raters are.</span></li>
-   <li><span>Final score <code>= 3.00 + ${P.spread.toFixed(2)} × z</code>, clamped to 1.00 to 5.00. Most places land near 3; about 1 in 6 clears ${(3+P.spread).toFixed(2)}.</span></li>`;
   const tl=state.visits.filter(v=>v.source==='timeline').length;
   const hid=state.hidden.filter(k=>!k.startsWith('r:'));
   $('#skipCount').textContent=hid.length?hid.length+' places':'';
@@ -1426,14 +1370,14 @@ function renderLogic(){
   $('#bayOnly').checked=!!state.bayOnly;
   $('#stats').innerHTML=`<div><b>${state.myReviews.length}</b><span>your ratings</span></div><div><b>${tl}</b><span>Timeline visits</span></div><div><b>${S.list.length}</b><span>ranked places</span></div><div><b>${S.active}</b><span>active ratings</span></div><div><b>${S.expired}</b><span>expired ratings</span></div><div><b>${world.users.length}</b><span>simulated people</span></div>`;
   const I=state.importInfo;
-  $('#importStatus').innerHTML=I?`Last import ${esc(new Date(I.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}: <b>${I.found}</b> stops kept, ${I.added} new. Skipped ${I.homework} home or work, ${I.short} shorter than ${I.minDwell} min, ${I.old} too old${I.away?`, ${I.away} outside the covered states`:''}${I.off?`, ${I.off} outside meal times`:''}${I.notfood?`, ${I.notfood} not food (hidden)`:''}.${I.enriched?` ${I.named} restaurant names added from Google.`:''}${I.osm?` <b>${I.osmAuto||0}</b> named from the restaurant map${I.osmAsk?`, ${I.osmAsk} need you to pick`:''}.`:''}${I.listOther?` <b>${I.listOther}</b> skipped: no restaurant within 15 m, or a store, gym or other place was closer.`:''}${I.tilesOk===false?' Some map areas didn’t download; they’ll be checked next time you open the app.':''}${I.newest?` Newest visit in the file: ${esc(new Date(I.newest).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}))}.`:''}${I.errs&&I.errs.length?'<br>'+I.errs.map(esc).join('<br>'):''}`:'';
+  $('#importStatus').innerHTML=I?`Last import ${esc(new Date(I.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}: <b>${I.found}</b> stops kept, ${I.added} new. Skipped ${I.homework} home or work, ${I.short} shorter than ${I.minDwell} min, ${I.old} too old${I.away?`, ${I.away} outside the covered states`:''}${I.off?`, ${I.off} outside meal times`:''}${I.notfood?`, ${I.notfood} not food (hidden)`:''}.${I.enriched?` ${I.named} restaurant names added from Google.`:''}${I.osm?` <b>${I.osmAuto||0}</b> named from the restaurant map${I.osmAsk?`, ${I.osmAsk} need you to pick`:''}.`:''}${I.listOther?` <b>${I.listOther}</b> skipped: no restaurant within 8 m, or a store, gym or other place was closer.`:''}${I.tilesOk===false?' Some map areas didn’t download; they’ll be checked next time you open the app.':''}${I.newest?` Newest visit in the file: ${esc(new Date(I.newest).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}))}.`:''}${I.errs&&I.errs.length?'<br>'+I.errs.map(esc).join('<br>'):''}`:'';
 }
 
 /* ---------- import ---------- */
 /* ---------- place maps (Overture Maps + OpenStreetMap), downloaded per area and matched on this device ----------
    The covered region is cut into 0.25° tiles (about 25 km). Only the tiles around your own stops are fetched,
    so the server learns roughly which areas you've been to, never your stops, times or anything else. */
-const TILE=0.25,CLAT=0.002,CLNG=0.0025,NEAR=15,ASK=40;
+const TILE=0.25,CLAT=0.002,CLNG=0.0025,NEAR=8,ASK=40;
 const cellOf=(la,ln)=>Math.floor(la/CLAT)+':'+Math.floor(ln/CLNG);
 const tileId=(la,ln)=>Math.floor(la/TILE)+'_'+Math.floor(ln/TILE);
 let TM=null,tmP=null;const TS=new Map(),TR=new Set(),FG=new Map(),OG=new Map();
@@ -1485,10 +1429,10 @@ function fit(kind,mins,h){
   if(kind===3)return (late?1:.45)*(mins>=30?1:.6);
   return (mins>=20&&mins<=180?1:.6)*(mealHour(h)?1:.7);
 }
-/* Decide one stop: a restaurant within 15 m names it (best fit for your stay wins; the rest become one-tap fixes).
-   A non-food place clearly closer skips it. No restaurant within 15 m skips it, unless it was a 40+ minute mealtime stay
+/* Decide one stop: a restaurant within 8 m names it (best fit for your stay wins; the rest become one-tap fixes).
+   A non-food place clearly closer skips it. No restaurant within 8 m skips it, unless it was a 40+ minute mealtime stay
    with restaurants a little farther out, which asks "Were you at…". */
-/* Timeline stops sit on Google's pin for the place, so 15 m is enough. Raw GPS from the phone is noisier: 35 m, a bigger margin before a
+/* Timeline stops sit on Google's pin for the place, so 8 m is enough. Raw GPS from the phone is noisier: 35 m, a bigger margin before a
    closer shop or gym wins, and a "Were you at…" question when two restaurants are about equally likely. */
 function judge(la,ln,vs,gps){
   const R=gps?35:NEAR,A=gps?60:ASK,margin=gps?20:5;
@@ -1504,7 +1448,7 @@ function judge(la,ln,vs,gps){
   if(O&&O.d<=R&&DRINKS.test(O.cat))return {food:'bar',label:O.cat};
   return {food:false,why:O&&O.d<=R?O.cat:`No restaurant within ${R} m`};
 }
-const MATCH_V=6,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
+const MATCH_V=7,DRINKS=/^(bar|pub|lounge|nightlife venue)$/i;
 function matchPlaces(keys){
   let auto=0,ask=0,skip=0;
   if(!TM)return {auto,ask,skip};
@@ -1538,7 +1482,7 @@ function matchPlaces(keys){
 }
 
 /* ---------- automatic visit detection (Android app only) ----------
-   The phone reports a location when you move. A stay of 20+ minutes in one spot becomes a candidate stop; it is checked
+   The phone reports a location when you move. A stay of 10+ minutes in one spot becomes a candidate stop; it is checked
    against the restaurant map right here, and only restaurant visits are kept. Everything else, and every raw location,
    is forgotten: the only thing remembered between fixes is the spot you're in right now. */
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
@@ -1630,7 +1574,7 @@ function renderGps(){
 async function gpsToggle(){
   if(GPS.on){await gpsStop();if(GPS.cur)delete GPS.cur;GPS.on=false;gpsSave(GPS);renderGps();toast('Visit detection is off. Nothing about where you went is kept.');return}
   const ok=await gpsStart(true);
-  if(ok){GPS.on=true;gpsSave(GPS);renderGps();askNotify();toast('Visit detection is on. Eat somewhere for 20+ minutes and it shows up here.')}
+  if(ok){GPS.on=true;gpsSave(GPS);renderGps();askNotify();toast('Visit detection is on. Eat somewhere for 10+ minutes and it shows up here.')}
 }
 if(NATIVE&&GPS.on){gpsStart(false);setTimeout(nudgeCheck,3000)}
 
@@ -1836,12 +1780,12 @@ function go(t){
 /* after a swipe: rebuild scores, rankings, map and settings once swiping pauses, leaving the deck alone */
 let rfT=0;
 function refreshLater(){clearTimeout(rfT);rfT=setTimeout(()=>{renderGps();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderRank();renderFriends();renderLogic();renderMap()},600)}
-function refresh(){clearTimeout(rfT);renderGps();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
+function refresh(){clearTimeout(rfT);renderGps();renderAcct();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
 
 /* ---------- shared backend (Supabase): used only when config.js has your project's keys ---------- */
 const CFG=window.NR_CONFIG||{};
 const SHARED=!!(CFG.url&&CFG.key&&!/PASTE/i.test(CFG.url+CFG.key));
-let sb=null,me=null,myProfile=null,friendsList=[],lastPull=0,delArmed=0;
+let sb=null,me=null,myProfile=null,friendsList=[],lastPull=0,delArmed=0,clearArmed=0;
 const AUTH_IN_URL=/access_token=|error_description=|refresh_token=/.test(location.hash);
 let authUrlPending=AUTH_IN_URL;
 const dayStr=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -1873,7 +1817,26 @@ function signedOut(){
   refresh();
   if(!state.noSignIn)showSignIn();
 }
+/* wipe what this phone keeps (visits, names, unsent ratings, photos, visit detection); the account's shared ratings are untouched */
+function clearPhone(){
+  const keep={noSignIn:state.noSignIn};
+  state=fresh();state.tiersV2=true;state.cleanV1=true;Object.assign(state,keep);
+  world=EMPTY_WORLD;try{photoClear()}catch(e){}
+  try{gpsStop();localStorage.removeItem(GLS)}catch(e){}GPS={};
+}
 async function afterSignIn(){
+  closeAcct();
+  /* a different account than last time on this phone: don't mix their visits and ratings into this one */
+  if(state.lastUser&&state.lastUser!==me.id&&(state.visits.length||state.myReviews.length)){
+    acctOpen(`<h2 class="h2">This phone has someone else’s visits</h2>
+      <p class="fine">The visits and ratings saved on this phone came from a different account. Clear them before using yours? Their shared ratings stay safe in their account.</p>
+      <div class="btns"><button class="btn primary" data-cmd="acctclear">Clear this phone</button><button class="btn" data-cmd="acctkeep">Keep them in my account</button></div>`);
+    return;
+  }
+  state.lastUser=me.id;save();
+  return finishSignIn();
+}
+async function finishSignIn(){
   closeAcct();
   const {data:prof}=await sb.from('profiles').select('id,display_name,friend_code').eq('id',me.id).maybeSingle();
   myProfile=prof||{id:me.id,display_name:null,friend_code:'—'};
@@ -1883,6 +1846,19 @@ async function afterSignIn(){
   if(!myProfile.display_name)askName();
 }
 
+/* account panel on the Settings screen */
+function renderAcct(){
+  const box=$('#setAcct');if(!box)return;
+  box.hidden=!SHARED;if(!SHARED)return;
+  if(sb&&me){
+    const nm=myProfile&&myProfile.display_name;
+    $('#setAcctLine').innerHTML=`Signed in as <b>${esc(nm||'you')}</b> · ${esc(me.email||'')}`;
+    $('#setAcctBtns').innerHTML=`<button class="btn" data-cmd="signout">Sign out</button><button class="btn danger" data-cmd="signoutclear">Sign out and clear this phone</button>`;
+  }else{
+    $('#setAcctLine').textContent='Not signed in. Your ratings stay on this phone until you sign in.';
+    $('#setAcctBtns').innerHTML=`<button class="btn primary" data-cmd="signin">Sign in</button>`;
+  }
+}
 /* account sheet */
 function acctOpen(html){
   $('#acctBody').innerHTML='<div class="grab"></div>'+html;
@@ -2111,7 +2087,6 @@ document.addEventListener('click',e=>{
       world=state.demo?genWorld(state.seed):EMPTY_WORLD;
       state.friends=state.demo?DEFAULT_FRIENDS.slice():[];
       save();refresh();toast(state.demo?'Demo crowd on: 36 fake people added for show':'Demo crowd off: only your real ratings');break}
-    case 'defaults':state.params={...DEFAULTS};syncDials();save();refresh();toast('Defaults restored');break;
     case 'unhide':{
       const k=t.dataset.key;state.hidden=state.hidden.filter(x=>x!==k);
       if(!state.allow.includes(k))state.allow.push(k);
@@ -2126,7 +2101,14 @@ document.addEventListener('click',e=>{
     case 'avpick':{const p=avList[+t.dataset.i];if(p)avAdd(p);break}
     case 'avcustom':{const n=$('#avq').value.trim().slice(0,80);if(n)avAdd(avRef?{n,lat:avRef.lat,lng:avRef.lng}:{n});break}
     case 'notnow':state.noSignIn=true;save();closeAcct();toast('You can sign in anytime from the Friends tab.');break;
-    case 'signout':if(sb)sb.auth.signOut().then(()=>{state.noSignIn=true;save();toast('Signed out. Your ratings stay on this phone.')});break;
+    case 'signout':if(sb){state.noSignIn=true;save();sb.auth.signOut().then(()=>toast('Signed out. Your visits and ratings stay on this phone.'))}break;
+    case 'signoutclear':{
+      if(Date.now()-clearArmed>4000){clearArmed=Date.now();t.textContent='Tap again to sign out and clear';setTimeout(()=>{t.textContent='Sign out and clear this phone'},4000);break}
+      clearArmed=0;state.noSignIn=true;save();
+      const done=()=>{clearPhone();state.noSignIn=true;save();refresh();go('rate');toast('Signed out and this phone is cleared. Shared ratings are safe in the account.')};
+      if(sb)sb.auth.signOut().then(done,done);else done();break}
+    case 'acctclear':clearPhone();state.lastUser=me&&me.id;save();finishSignIn();break;
+    case 'acctkeep':state.lastUser=me&&me.id;save();finishSignIn();break;
     case 'renameme':askName();break;
     case 'copycode':{const c=myProfile&&myProfile.friend_code||'';try{navigator.clipboard.writeText(c).then(()=>toast('Copied '+c),()=>toast('Your code is '+c))}catch(_){toast('Your code is '+c)}break}
     case 'deleteshared':{
@@ -2149,7 +2131,7 @@ document.addEventListener('click',e=>{
       wipeArmed=0;t.textContent='Erase everything';
       deleteShared(false);
       state=fresh();state.tiersV2=true;state.cleanV1=true;state.noSignIn=!me;world=EMPTY_WORLD;photoClear();if(sb&&me)pullShared(true);
-      save();syncDials();refresh();go('rate');toast('Everything erased. Import your Timeline to start fresh.');break}
+      save();refresh();go('rate');toast('Everything erased. Import your Timeline to start fresh.');break}
     case 'reset':{
       if(Date.now()-resetArmed>4000){resetArmed=Date.now();t.textContent='Tap again to erase';setTimeout(()=>{t.textContent='Erase my ratings'},4000);break}
       resetArmed=0;t.textContent='Erase my ratings';
@@ -2162,10 +2144,6 @@ document.addEventListener('click',e=>{
 let dialRaf=0;
 document.addEventListener('input',e=>{
   if(e.target.id==='cmtInput'){$('#cmtCount').textContent=e.target.value.length+'/140';return}
-  const k=e.target.dataset&&e.target.dataset.dial;if(!k)return;
-  const d=DIALS.find(x=>x[0]===k);
-  state.params[k]=+e.target.value;$('#o-'+k).textContent=d[5](state.params[k]);
-  cancelAnimationFrame(dialRaf);dialRaf=requestAnimationFrame(()=>{save();refresh()});
 });
 $('#bayOnly').addEventListener('change',e=>{state.bayOnly=e.target.checked;save();refresh();toast(state.bayOnly?'Stops outside CA, OR, WA and NV are hidden':'Stops everywhere are shown')});
 $('#mealOnly').addEventListener('change',e=>{state.mealOnly=e.target.checked;save();toast(state.mealOnly?'Meal-time filter on for your next import':'All stops will be included on your next import')});
@@ -2193,7 +2171,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ---------- boot ---------- */
-buildDials();
+
 refresh();
 go((location.hash||'').slice(1)||'rate');
 photoInit().then(()=>{if(PH.mem.size)refresh()});
