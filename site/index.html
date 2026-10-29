@@ -891,6 +891,7 @@ function renderDeck(){
   const hasTimeline=state.visits.some(v=>v.source==='timeline');
   $('#srcpill').textContent=hasTimeline?'Timeline':'';
   $('#qcount').textContent=q.length?`${q.length} visit${q.length>1?'s':''} to rate · hold a card for more`:hasTimeline?`Nothing left from the last ${P.queueDays} days`:'Import your Google Timeline to start';
+  const leaving=[...stack.querySelectorAll('.card.leaving')];
   stack.innerHTML='';
   document.querySelectorAll('#acts .act').forEach(b=>b.disabled=!q.length);
   if(!q.length){
@@ -902,6 +903,7 @@ function renderDeck(){
         <li>Tap Import and pick the file. Your last ${P.queueDays} days of stops become cards.</li></ol>
         <div class="btns"><label class="btn primary" for="file" role="button" tabindex="0">Import Timeline</label></div>
         <p class="fine">The file stays on this phone.</p></div>`;
+    leaving.forEach(x=>stack.appendChild(x));
     return;
   }
   const top=q.slice(0,3);
@@ -914,6 +916,7 @@ function renderDeck(){
     stack.appendChild(el);
     if(!depth)bindDrag(el,v);
   }
+  leaving.forEach(x=>stack.appendChild(x));
 }
 function dirOf(dx,dy){if(Math.hypot(dx,dy)<24)return null;return Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down')}
 function showDir(el,d,dist){el.querySelectorAll('.stamp').forEach(s=>s.style.opacity=s.dataset.dir===d?Math.min(1,dist/95):0);if(d)el.dataset.dir=d;else delete el.dataset.dir}
@@ -1023,13 +1026,15 @@ function commit(el,v,d){
   fling(el,d,()=>rate(v,tier));
 }
 function fling(el,d,then){
-  if(reduceMotion){then();return}
+  el.classList.add('leaving');el.style.pointerEvents='none';
+  if(reduceMotion){el.remove();then();return}
   const W=innerWidth,H=innerHeight;
   const m={left:[-W*1.3,40],right:[W*1.3,40],up:[0,-H*1.1],down:[0,H*1.1]}[d];
-  el.style.transition='transform .3s ease-in, opacity .3s ease-in';
+  el.style.transition='transform .22s ease-in, opacity .22s ease-in';
   el.style.transform=`translate(${m[0]}px,${m[1]}px) rotate(${m[0]/30}deg)`;
   el.style.opacity='0';
-  setTimeout(then,240);
+  then();
+  setTimeout(()=>el.remove(),260);
 }
 function swipeTop(d){
   const el=$('#stack .card:not(.behind)');if(!el)return;
@@ -1047,9 +1052,9 @@ function rate(v,tier,reasons){
   if(state.sinceToken>=10){state.sinceToken=0;if(state.tokens<3){state.tokens++;earned=true}else capped=true}
   state.myReviews.push(rec);
   pushUndo({type:'rate',id:rec.id});
-  save();refresh();
+  save();renderHeader();renderDeck();refreshLater();
   if(sb&&me)pushRating(rec).then(ok=>{if(ok)save()});
-  toast(earned?'You earned a Super Like.':capped?'Super Like cap reached (3 held).':tier===0?`Problem reported · ${meta(v.key).name}`:`${TIERS[tier].label} · ${meta(v.key).name}`);
+  if(earned)toast('You earned a Super Like.');else if(tier===0)toast(`Problem reported · ${meta(v.key).name}`);
 }
 function pushUndo(a){state.undo.push(a);if(state.undo.length>30)state.undo.shift()}
 function undo(){
@@ -1548,7 +1553,10 @@ function go(t){
   if(t==='map')requestAnimationFrame(()=>renderMap());
   if(!authUrlPending)try{history.replaceState(null,'','#'+t)}catch(e){}
 }
-function refresh(){G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
+/* after a swipe: rebuild scores, rankings, map and settings once swiping pauses, leaving the deck alone */
+let rfT=0;
+function refreshLater(){clearTimeout(rfT);rfT=setTimeout(()=>{G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderRank();renderFriends();renderLogic();renderMap()},600)}
+function refresh(){clearTimeout(rfT);G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
 
 /* ---------- shared backend (Supabase): used only when config.js has your project's keys ---------- */
 const CFG=window.NR_CONFIG||{};
