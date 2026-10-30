@@ -687,7 +687,8 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* a missing location comes back from the database as null, and the built-in isFinite(null) says true; only real numbers count here */
 const isFinite=v=>typeof v==='number'&&Number.isFinite(v);
 const DAY=864e5, NOW=Date.now();
-const COMM=new Map();   /* names testers typed for places the open map doesn't have, from everyone's shared ratings */
+const COMM=new Map();
+const OWNN=new Map();   /* the names on your own shared ratings: what you named (or confirmed) a place as, even after a reinstall */   /* names testers typed for places the open map doesn't have, from everyone's shared ratings */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -834,7 +835,8 @@ let S=null,G=null,F=null,openKey=null,rankFilter='all';
 function meta(key){
   if(key.startsWith('r:')){const p=PMAP[key.slice(2)];if(p)return {name:p.name,sub:p.hood+' · '+p.cuisine,hood:p.hood,cuisine:p.cuisine,hue:p.hue,tl:false,named:true,note:TRENDS[p.id]&&TRENDS[p.id].note,lat:p.lat,lng:p.lng}}
   const lk=localKey(key),tp=state.tplaces[lk]||remotePlaces[key]||{};
-  const name=state.names[lk]||state.names[key]||tp.name||COMM.get(lk)||COMM.get(key),gname=!name&&GNAME.get(lk);
+  const ck=tp.ref||key;
+  const name=state.names[lk]||state.names[key]||OWNN.get(key)||OWNN.get(lk)||OWNN.get(ck)||tp.name||COMM.get(lk)||COMM.get(key),gname=!name&&GNAME.get(lk);
   const coords=isFinite(tp.lat)?tp.lat.toFixed(4)+', '+tp.lng.toFixed(4):'';
   const src=tp.manual?'Added by you':tp.gps?'Found by your phone':'From your Timeline';
   return {name:name||gname||(state.tplaces[lk]?'Unnamed stop':'Unnamed place'),sub:tp.addr?tp.addr.split(',').slice(0,2).join(','):gname?'Name from Google':name?src:(coords||src),hood:'',cuisine:tp.label||'Timeline stop',hue:hash(key)%360,tl:true,named:!!name,gname:!!gname,coords,tp,lat:tp.lat,lng:tp.lng};
@@ -2671,6 +2673,7 @@ function buildShared(rows){
   const reviews=[],ustats={};remotePlaces={};
   const votes=new Map();for(const r of rows)if(r.place_key&&r.place_name){const v=votes.get(r.place_key)||{};v[r.place_name]=(v[r.place_name]||0)+1;votes.set(r.place_key,v)}
   COMM.clear();for(const [k,v] of votes)COMM.set(k,Object.entries(v).sort((a,b)=>b[1]-a[1])[0][0]);
+  OWNN.clear();for(const r of rows.slice().sort((a,b)=>String(a.visit_day).localeCompare(String(b.visit_day))))if(me&&r.who===me.id&&r.place_key&&r.place_name)OWNN.set(r.place_key,r.place_name);
   for(const r of rows){
     if(r.place_key&&!remotePlaces[r.place_key])remotePlaces[r.place_key]={name:COMM.get(r.place_key)||null,label:r.place_label||null,lat:r.place_lat,lng:r.place_lng};
     const ck=canonRemote(r);if(ck!==r.place_key&&!remotePlaces[ck])remotePlaces[ck]=remotePlaces[r.place_key];
