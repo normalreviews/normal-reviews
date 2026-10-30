@@ -160,6 +160,11 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 @keyframes starpop{0%{opacity:1}100%{opacity:0}}
 .celetxt{position:absolute;left:0;right:0;top:51%;text-align:center;font:800 34px/1 var(--f-display);color:var(--t4);letter-spacing:-.02em;opacity:0;animation:celetxt 1.3s .15s ease-out forwards;text-shadow:0 2px 0 #fff,0 0 18px rgb(255 255 255 / .9)}
 @keyframes cvdraw{to{stroke-dashoffset:0}}
+/* phones set to remove animations: everything simply shows for 1.5 s, then goes away */
+.cele.calm{background:rgb(255 255 255 / .72)}
+.cele.calm .cv{stroke-dashoffset:0}
+.cele.calm .star{opacity:1;transform:translate(calc(var(--x) + var(--dx)),calc(var(--y) + var(--dy))) scale(2.2)}
+.cele.calm .celetxt{opacity:1}
 @keyframes cvfade{to{opacity:0}}
 @keyframes starfly{0%{opacity:1;transform:translate(var(--x),var(--y)) scale(.5) rotate(0)}100%{opacity:1;transform:translate(calc(var(--x) + var(--dx)),calc(var(--y) + var(--dy))) scale(2.2) rotate(216deg)}}
 @keyframes celetxt{0%{opacity:0;transform:translateY(8px) scale(.9)}20%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
@@ -1255,9 +1260,11 @@ function swipeTop(d){
    (off the curve, where extraordinary lives), then confetti. Skipped if the phone asks for less motion. */
 function celebrate(){
   try{if(navigator.vibrate)navigator.vibrate([25,40,70])}catch(e){}
-  if(reduceMotion)return;
+  try{celebrate2()}catch(e){toast('Extraordinary! (animation error: '+(e&&e.message||e)+')')}
+}
+function celebrate2(){
   const W=innerWidth,H=innerHeight,o=document.createElement('div');
-  o.className='cele';o.setAttribute('aria-hidden','true');
+  o.className='cele'+(reduceMotion?' calm':'');o.setAttribute('aria-hidden','true');
   const y0=H*.46,x0=W*.08,x1=W*.92,top=H*.24,pts=[];
   for(let i=0;i<=60;i++){const t=i/60,x=x0+(x1-x0)*t,z=(t-.5)*6;pts.push([x,y0-(y0-top)*Math.exp(-z*z/2)])}
   const d='M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L');
@@ -1265,7 +1272,7 @@ function celebrate(){
   document.body.appendChild(o);
   const cv=o.querySelector('canvas'),c=cv.getContext('2d'),cols=['#6440D4','#F5B400','#2B44C4','#1B8455','#E8508A','#FF8A3D'];
   const bx=x1-W*.06,by=y0-H*.3,parts=[];
-  setTimeout(()=>{for(let i=0;i<80;i++){const a=Math.random()*Math.PI*2,v=4+Math.random()*9;parts.push({x:bx,y:by,vx:Math.cos(a)*v-3,vy:Math.sin(a)*v-4,s:4+Math.random()*5,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[i%cols.length],t:0})}},600);
+  if(!reduceMotion)setTimeout(()=>{for(let i=0;i<80;i++){const a=Math.random()*Math.PI*2,v=4+Math.random()*9;parts.push({x:bx,y:by,vx:Math.cos(a)*v-3,vy:Math.sin(a)*v-4,s:4+Math.random()*5,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[i%cols.length],t:0})}},600);
   const t0=performance.now();
   (function frame(now){
     c.clearRect(0,0,W,H);
