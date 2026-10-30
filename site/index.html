@@ -2434,6 +2434,8 @@ async function finishSignIn(){
   await syncUp();
   flushLinks();
   await pullShared(true);
+  if(autoLand&&!pendingWelcome){const t=landOn();if(t!==current)go(t)}
+  autoLand=false;
   if(pendingWelcome)showWelcome();
   else if(!myProfile.display_name)askName();
   renderInvites();
@@ -2757,7 +2759,7 @@ document.addEventListener('click',e=>{
   const uf=e.target.closest('[data-unfriend]');
   if(uf&&sb){sb.rpc('remove_friend',{other:uf.dataset.unfriend}).then(({error})=>{if(error)toast(friendly(error));else{toast('Removed from friends');pullShared(true)}});return}
   if(!t){if(e.target.id==='sheet')closeDetail();else if(e.target.id==='menu')closeMenu();else if(e.target.id==='acct')closeAcct();return}
-  if(t.dataset.tab)return go(t.dataset.tab);
+  if(t.dataset.tab){autoLand=false;return go(t.dataset.tab)}
   if(t.dataset.mapfilter){state.mapFilter=t.dataset.mapfilter;save();renderMap();return}
   const c=t.dataset.cmd;
   if(c&&c[0]==='m'&&c!=='menu')return menuCmd(c);
@@ -2889,7 +2891,11 @@ document.addEventListener('keydown',e=>{
 /* ---------- boot ---------- */
 
 refresh();
-go((location.hash||'').slice(1)||'rate');
+/* first screen: Rankings when you're signed in and have nothing to rate, otherwise your cards.
+   A link to a specific tab (#map etc.) still wins. Checked again once sign-in finishes. */
+let autoLand=!location.hash||location.hash==='#rate';
+const landOn=()=>autoLand&&!state.noSignIn&&state.lastUser&&G&&G.list.length&&!deckVisits().length?'rankings':'rate';
+go(autoLand?landOn():(location.hash||'').slice(1));
 photoInit().then(()=>{if(PH.mem.size)refresh()});
 if(MOVE_IN)unpackMove(MOVE_IN).then(o=>{
   const old=o&&o.s?JSON.parse(o.s):null;if(!old||old.v!==1)return;
