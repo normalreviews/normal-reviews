@@ -170,6 +170,22 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .score.lo{color:var(--muted)}
 .youchip{flex:none;font:700 10px/1 var(--f-body);text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;border-radius:5px;background:var(--accent-soft);color:var(--accent)}
 .emptyrow{padding:18px 4px;color:var(--muted)}
+.finder.listmode .ndl,.finder:not(.listmode) .lmo{display:none}
+.lcat{padding:14px 0 4px}
+.lcat h3{margin:0 0 6px;font:700 17px/1.2 var(--f-head,var(--f-body))}
+.ltier{display:flex;align-items:center;gap:8px;margin:10px 0 2px}
+.ltier .fine{margin:0}
+.lgrp{list-style:none;margin:0;padding:0}
+.litem{display:grid;grid-template-columns:auto 22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);background:var(--bg)}
+.litem.ro{grid-template-columns:22px minmax(0,1fr)}
+.litem.dragging{position:relative;z-index:2;box-shadow:0 6px 18px rgb(0 0 0 / .18);border-radius:10px}
+.lhandle{appearance:none;border:0;background:none;touch-action:none;cursor:grab;color:var(--muted);font:700 18px/1 var(--f-body);padding:10px 8px;letter-spacing:-2px}
+.lpos{font:500 13px var(--f-mono);color:var(--muted);text-align:right}
+.lname{appearance:none;border:0;background:none;text-align:left;padding:4px 0;min-width:0;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.lname .nm{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lmv{display:flex;gap:4px}
+.lmv button{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:13px;cursor:pointer}
+.lmv button:disabled{opacity:.3;cursor:default}
 
 .rankhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .rankhead + .lede{margin-top:-8px}
@@ -455,10 +471,11 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <p class="lede" id="rankLede"></p>
       <div class="finder" id="finder">
         <div class="frow">
+          <label for="fWho" class="lmo">Whose list<select id="fWho"></select></label>
           <label for="fCat">Food type<select id="fCat"></select></label>
-          <label for="fDist">Distance<select id="fDist"><option value="1">Within 1 mi</option><option value="3">Within 3 mi</option><option value="10">Within 10 mi</option><option value="25">Within 25 mi</option><option value="0">Anywhere</option></select></label>
+          <label for="fDist" class="ndl">Distance<select id="fDist"><option value="1">Within 1 mi</option><option value="3">Within 3 mi</option><option value="10">Within 10 mi</option><option value="25">Within 25 mi</option><option value="0">Anywhere</option></select></label>
         </div>
-        <div class="frow">
+        <div class="frow ndl">
           <label for="fZip">ZIP code<input id="fZip" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="Blank = where I am"></label>
           <label for="fSort">Sort<select id="fSort"><option value="best">Best score</option><option value="near">Closest</option></select></label>
         </div>
@@ -471,6 +488,7 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
           <div class="seg" role="group" aria-label="Filter">
             <button data-filter="all" aria-pressed="true">Everyone</button>
             <button data-filter="mine" aria-pressed="false">Rated by me</button>
+            <button data-filter="list" aria-pressed="false">My list</button>
           </div>
         </div>
         <ul class="rows" id="rankList"></ul>
@@ -706,7 +724,7 @@ function sampleVisits(){
   const S=[['r:kura',2,19,30,75],['r:birria',4,13,10,45],['r:nonna',6,20,0,95],['g:sample-1',8,18,40,60],['r:pho',11,12,15,50],['r:copper',15,19,0,80],['r:ramen',18,12,30,40],['r:saffron',23,19,15,70],['r:ondo',27,20,0,105]];
   return S.map(([key,d,h,mi,dur])=>{const t=new Date(NOW-d*DAY);t.setHours(h,mi,0,0);const start=t.getTime();return {id:key+'@'+start,key,start,end:start+dur*6e4,source:'sample'}});
 }
-function fresh(){return {v:1,seed:7,params:{...DEFAULTS},visits:[],tplaces:{},myReviews:[],tokens:1,sinceToken:0,hidden:[],names:{},undo:[],importInfo:null,mode:'global',friends:[],drafts:{},skipped:{},dismissed:[],mapFilter:'all',demo:false,mealOnly:true,allow:[],bayOnly:true,find:{cat:'all',dist:3,from:'me',zip:'',sort:'best',name:''}}}
+function fresh(){return {v:1,seed:7,params:{...DEFAULTS},visits:[],tplaces:{},myReviews:[],tokens:1,sinceToken:0,hidden:[],names:{},undo:[],importInfo:null,mode:'global',friends:[],drafts:{},skipped:{},dismissed:[],mapFilter:'all',demo:false,mealOnly:true,allow:[],bayOnly:true,find:{cat:'all',dist:3,from:'me',zip:'',sort:'best',name:'',who:'me'},order:{}}}
 function load(){try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.v===1)return s}catch(e){}return null}
 function save(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
 /* ---------- moving from the old Netlify address ----------
@@ -797,7 +815,7 @@ function findRef(tp,name){if(!name||!isFinite(tp.lat))return null;const c=nearby
 function compute(only){
   rebuildAlias();
   const P=state.params, hid=new Set(state.hidden);
-  const mine=state.myReviews.filter(r=>!hid.has(r.key)).map(r=>({id:r.id,user:'me',key:canon(r.key),tier:r.tier,ts:r.ts,comment:r.comment||null,photo:r.photo||null,photoPath:r.photoPath||null,reasons:r.reasons||null}));
+  const mine=state.myReviews.filter(r=>!hid.has(r.key)).map(r=>({id:r.id,user:'me',key:canon(r.key),tier:r.tier,adj:r.adj||0,ts:r.ts,comment:r.comment||null,photo:r.photo||null,photoPath:r.photoPath||null,reasons:r.reasons||null}));
   const all=(only?world.reviews.filter(r=>only.has(r.user)):world.reviews).concat(mine);
   const by=new Map();let gw=0,gx=0,active=0,expired=0;
   for(const r of all){
@@ -806,7 +824,7 @@ function compute(only){
     const age=Math.max(0,(NOW-r.ts)/DAY), w=age<=P.fullDays?1:age>=P.window?0:(P.window-age)/(P.window-P.fullDays);
     r.age=age;r.w=w;p.all.push(r);
     if(r.user==='me'&&(!p.mine||r.ts>p.mine.ts))p.mine=r;
-    if(w>0){p.sw+=w;p.sx+=w*r.tier;p.n++;p.cw[r.tier]+=w;p.people.add(r.user);gw+=w;gx+=w*r.tier;active++;
+    if(w>0){const v=r.tier+(r.adj||0);p.sw+=w;p.sx+=w*v;p.n++;p.cw[r.tier]+=w;p.people.add(r.user);gw+=w;gx+=w*v;active++;
       if(r.tier===0){p.problems++;(r.reasons||[]).forEach(x=>p.rc[x]=(p.rc[x]||0)+1)}}
     else expired++;
   }
@@ -1267,6 +1285,103 @@ function renderFinder(L){
   $('#fDist').value=String(f.dist);$('#fSort').value=f.sort;
   if(document.activeElement!==$('#fZip'))$('#fZip').value=f.zip||'';
 }
+/* ---------- My list: your places by food type and rating, in the order you drag them ----------
+   Inside one food type + rating (say Pizza, Great), top of the list counts up to +0.4 of a tier and bottom up to −0.4,
+   so your favorite Great beats your other Greats but never a Super Like. Nothing changes until you move something;
+   a new rating joins the middle of its group. Friends receive the same nudge and can see your order. */
+const LADJ=0.4;
+const gTier=g=>+g.slice(g.lastIndexOf('|')+1), gCat=g=>g.slice(0,g.lastIndexOf('|'));
+const adjAt=(i,n)=>n<2?0:Math.round(LADJ*(1-2*i/(n-1))*1000)/1000;
+function latestByPlace(revs,keyOf){
+  const by=new Map(),W=state.params.window;
+  for(const r of revs){if(NOW-r.ts>W*DAY)continue;const k=keyOf(r),o=by.get(k);if(!o||r.ts>o.r.ts)by.set(k,{key:k,r})}
+  for(const x of by.values()){x.cat=catOf(meta(x.r.key));x.g=x.cat+'|'+x.r.tier}
+  return [...by.values()];
+}
+function myGroups(){
+  const hid=new Set(state.hidden),gs={};
+  for(const x of latestByPlace(state.myReviews.filter(r=>!hid.has(r.key)),r=>canon(r.key)))(gs[x.g]=gs[x.g]||[]).push(x);
+  return gs;
+}
+/* keep every group's order in step with your ratings, and each rating's nudge in step with its place in the order */
+function normalizeOrders(){
+  rebuildAlias();
+  const gs=myGroups(),byKey=new Map();let changed=0;
+  for(const r of state.myReviews){const k=canon(r.key);(byKey.get(k)||byKey.set(k,[]).get(k)).push(r)}
+  const setAdj=(k,tier,a)=>{for(const r of byKey.get(k)||[])if(r.tier===tier&&Math.abs((r.adj||0)-a)>1e-4){r.adj=a;r.synced=false;changed++}};
+  for(const g of Object.keys(state.order))if(!gs[g])delete state.order[g];
+  for(const g in gs){
+    const mem=gs[g],tier=gTier(g),keys=new Set(mem.map(x=>x.key));
+    let ord=state.order[g];
+    if(!ord&&mem.some(x=>Math.abs(x.r.adj||0)>1e-6))    /* a new phone: rebuild your order from what you shared */
+      ord=mem.slice().sort((a,b)=>(b.r.adj||0)-(a.r.adj||0)||b.r.ts-a.r.ts).map(x=>x.key);
+    if(!ord){for(const x of mem)setAdj(x.key,tier,0);continue}
+    const kept=ord.filter(k=>keys.has(k)),have=new Set(kept);
+    for(const x of mem.filter(x=>!have.has(x.key)).sort((a,b)=>a.r.ts-b.r.ts))kept.splice(Math.floor(kept.length/2),0,x.key);
+    state.order[g]=kept;
+    kept.forEach((k,i)=>setAdj(k,tier,adjAt(i,kept.length)));
+  }
+  return changed;
+}
+let syT=0;function soonSync(){clearTimeout(syT);syT=setTimeout(()=>{if(sb&&me)syncUp()},1500)}
+function setOrder(g,keys){state.order[g]=keys;normalizeOrders();save();refresh();soonSync()}
+function moveItem(g,k,d){
+  const gs=myGroups(),mem=gs[g];if(!mem)return;
+  const keys=state.order[g]?state.order[g].slice():mem.slice().sort((a,b)=>b.r.ts-a.r.ts).map(x=>x.key);
+  const i=keys.indexOf(k),j=i+d;if(i<0||j<0||j>=keys.length)return;
+  [keys[i],keys[j]]=[keys[j],keys[i]];setOrder(g,keys);
+  requestAnimationFrame(()=>{const b=document.querySelector(`.lgrp[data-g="${CSS.escape(g)}"] .litem[data-k="${CSS.escape(k)}"] [data-mv="${d<0?'up':'down'}"]`);if(b&&!b.disabled)b.focus()});
+}
+function listCats(){return CATS.map(c=>c[0]).sort((a,b)=>a.localeCompare(b)).concat(['Everything else'])}
+function renderMyList(){
+  const f=state.find,fr=friendsList.length?friendsList:world.users.filter(u=>state.friends.includes(u.id));
+  if(f.who&&f.who!=='me'&&!fr.some(u=>u.id===f.who))f.who='me';
+  const who=f.who||'me',mine=who==='me';
+  $('#fWho').innerHTML=[['me','Mine']].concat(fr.map(u=>[u.id,u.name+'’s'])).map(([v,l])=>`<option value="${esc(v)}"${v===who?' selected':''}>${esc(l)}</option>`).join('');
+  let groups;
+  if(mine)groups=myGroups();
+  else{groups={};for(const x of latestByPlace(world.reviews.filter(r=>r.user===who),r=>r.key))(groups[x.g]=groups[x.g]||[]).push(x)}
+  const all=Object.values(groups).flat();
+  renderFinder(all.map(x=>({key:x.r.key})));
+  const q=(f.name||'').trim().toLowerCase(),name=who==='me'?'':((fr.find(u=>u.id===who)||{}).name||'Your friend');
+  let html='',shown=0;
+  for(const cat of listCats()){
+    if(f.cat!=='all'&&f.cat!==cat)continue;
+    let part='';
+    for(const t of [4,3,2,1,0]){
+      const g=cat+'|'+t,mem=groups[g];if(!mem)continue;
+      let items;
+      if(mine){const ord=state.order[g];const at=new Map(mem.map(x=>[x.key,x]));items=ord?ord.map(k=>at.get(k)).filter(Boolean):mem.slice().sort((a,b)=>b.r.ts-a.r.ts)}
+      else items=mem.slice().sort((a,b)=>(b.r.adj||0)-(a.r.adj||0)||b.r.ts-a.r.ts);
+      const vis=q?items.filter(x=>meta(x.r.key).name.toLowerCase().includes(q)):items;if(!vis.length)continue;
+      shown+=vis.length;
+      const ordered=mine?!!state.order[g]:items.some(x=>Math.abs(x.r.adj||0)>1e-6);
+      const note=items.length<2?'':mine?(ordered?'Your order counts':'Drag to order · not ordered yet'):(ordered?`${esc(name)}’s order`:'Not ordered yet');
+      const canMove=mine&&!q&&items.length>1;
+      part+=`<div class="ltier">${tierHTML(t)}<span class="fine">${items.length} place${items.length===1?'':'s'}${note?' · '+note:''}</span></div><ol class="lgrp" data-g="${esc(g)}">`+vis.map((x,i)=>{const m=meta(x.r.key);
+        return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}">${canMove?'<button class="lhandle" aria-label="Drag to reorder">⋮⋮</button>':''}<span class="lpos">${items.indexOf(x)+1}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}</span><span class="rsub">${esc(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.hood+' · '+m.cuisine)} · ${ago(x.r.ts).toLowerCase()}</span></button>${canMove?`<span class="lmv"><button data-mv="up" aria-label="Move ${esc(m.name)} up"${i===0?' disabled':''}>▲</button><button data-mv="down" aria-label="Move ${esc(m.name)} down"${i===vis.length-1?' disabled':''}>▼</button></span>`:''}</li>`}).join('')+'</ol>';
+    }
+    if(part)html+=`<li class="lcat"><h3>${esc(cat)}</h3>${part}</li>`;
+  }
+  $('#fNote').textContent=mine?'Your places by food type and rating. Drag ⋮⋮ or use ▲▼ to put your favorite on top of each group. Your order nudges scores a little within the rating you gave, and friends can see it.'
+    :`${name}’s places by food type and rating, in the order they put them.`;
+  $('#rankWhere').textContent=mine?'My list':name+'’s list';
+  $('#rankList').innerHTML=html||`<li class="emptyrow">${all.length?'Nothing matches. Try another food type.':mine?`You haven’t rated anything in the last ${state.params.window} days yet.`:`${esc(name)} hasn’t rated anything in the last ${state.params.window} days.`}</li>`;
+}
+/* dragging by the ⋮⋮ handle, within one group */
+let drag=null;
+document.addEventListener('pointerdown',e=>{const h=e.target.closest('.lhandle');if(!h)return;const li=h.closest('.litem');e.preventDefault();
+  try{h.setPointerCapture(e.pointerId)}catch(_){}drag={li,ol:li.parentElement,id:e.pointerId,moved:false};li.classList.add('dragging')});
+document.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id)return;e.preventDefault();
+  const y=e.clientY;let before=null;
+  for(const s of drag.ol.children){if(s===drag.li)continue;const r=s.getBoundingClientRect();if(y<r.top+r.height/2){before=s;break}}
+  if(drag.li.nextElementSibling!==before&&!(before===null&&drag.li===drag.ol.lastElementChild)){drag.ol.insertBefore(drag.li,before);drag.moved=true}
+  if(y<70)window.scrollBy(0,-10);else if(y>innerHeight-70)window.scrollBy(0,10);
+},{passive:false});
+function endDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=null;d.li.classList.remove('dragging');
+  if(d.moved)setOrder(d.ol.dataset.g,[...d.ol.children].map(x=>x.dataset.k))}
+document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
 function rowHTML(p){
   const m=meta(p.key), o=(isF()?G:F).by.get(p.key);
   const alt=o&&o.n?`${isF()?'Global':'Friends'} ${o.score.toFixed(2)}`:`${isF()?'Global':'Friends'} –`;
@@ -1283,6 +1398,9 @@ function renderRank(){
     :`Your own places, curved against each other: a 3.00 is your normal, higher means better than your usual. ${L.length} places from ${S.active} ratings.`;
   if(!L.length){$('#hist').innerHTML='<p class="fine">The curve appears once you’ve rated a few places.</p>';$('#rankList').innerHTML=`<li class="emptyrow">Nothing rated in the last ${P.window} days yet. Import your Timeline and swipe a few visits on the Rate tab.</li>`;return}
   $('#hist').innerHTML=histSVG(L);
+  $('#finder').classList.toggle('listmode',rankFilter==='list');
+  document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===rankFilter?'true':'false'));
+  if(rankFilter==='list')return renderMyList();
   renderFinder(L);
   const f=state.find,c=f.dist?findCenter():{label:null};
   let shown=rankFilter==='mine'?L.filter(p=>p.mine):L.slice();
@@ -2057,8 +2175,8 @@ function go(t){
 }
 /* after a swipe: rebuild scores, rankings, map and settings once swiping pauses, leaving the deck alone */
 let rfT=0;
-function refreshLater(){clearTimeout(rfT);rfT=setTimeout(()=>{renderGps();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderRank();renderFriends();renderLogic();renderMap()},600)}
-function refresh(){clearTimeout(rfT);renderGps();renderAcct();renderReport();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
+function refreshLater(){clearTimeout(rfT);rfT=setTimeout(()=>{if(normalizeOrders()){save();soonSync()}renderGps();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderRank();renderFriends();renderLogic();renderMap()},600)}
+function refresh(){clearTimeout(rfT);if(normalizeOrders()){save();soonSync()}renderGps();renderAcct();renderReport();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
 
 /* ---------- shared backend (Supabase): used only when config.js has your project's keys ---------- */
 const CFG=window.NR_CONFIG||{};
@@ -2335,12 +2453,12 @@ function buildShared(rows){
     if(me&&r.who===me.id){
       /* bring back your own ratings if this phone lost them (new phone, cleared browser) */
       if(r.visit_id&&!state.myReviews.some(x=>x.visitId===r.visit_id))
-        state.myReviews.push({id:'s'+r.id,visitId:r.visit_id,key:r.place_key,tier:r.tier,ts,at:ts,comment:r.comment,reasons:r.reasons,photoPath:r.photo_path,synced:true,serverId:r.id,prevTokens:state.tokens,prevSince:state.sinceToken});
+        state.myReviews.push({id:'s'+r.id,visitId:r.visit_id,key:r.place_key,tier:r.tier,adj:r.adj||0,ts,at:ts,comment:r.comment,reasons:r.reasons,photoPath:r.photo_path,synced:true,serverId:r.id,prevTokens:state.tokens,prevSince:state.sinceToken});
       continue;
     }
     const uid=r.who||('anon:'+r.id);
     ustats[uid]={n:r.rater_n,grader:r.rater_grader};
-    reviews.push({id:r.id,user:uid,key:canonRemote(r),tier:r.tier,ts,comment:r.comment,reasons:r.reasons,photoPath:r.photo_path});
+    reviews.push({id:r.id,user:uid,key:canonRemote(r),tier:r.tier,adj:r.adj||0,ts,comment:r.comment,reasons:r.reasons,photoPath:r.photo_path});
   }
   for(const u of users)if(!ustats[u.id])ustats[u.id]={n:0,grader:'Calibrated'};
   world={users,umap:Object.fromEntries(users.map(u=>[u.id,u])),reviews,ustats};
@@ -2356,6 +2474,7 @@ async function signPhotos(rows){
 }
 
 /* pushing your ratings */
+let NOADJ=false;   /* the database doesn't have the list-order column yet */
 async function pushRating(r){
   if(!sb||!me||r.key.startsWith('r:'))return false;
   try{
@@ -2373,7 +2492,9 @@ async function pushRating(r){
       place_label:(m.cuisine&&m.cuisine!=='Timeline stop')?String(m.cuisine).slice(0,80):null,
       place_lat:rd(tp.lat),place_lng:rd(tp.lng),visit_day:dayStr(r.ts),tier:r.tier,
       reasons:r.reasons||null,comment:r.comment?r.comment.slice(0,140):null,photo_path:r.photoPath||null};
-    const {data,error}=await sb.from('ratings').upsert(row,{onConflict:'user_id,visit_id'}).select('id').single();
+    if(!NOADJ)row.adj=Math.round((r.adj||0)*1000)/1000;
+    let {data,error}=await sb.from('ratings').upsert(row,{onConflict:'user_id,visit_id'}).select('id').single();
+    if(error&&!NOADJ&&/adj/.test(error.message||'')){NOADJ=true;delete row.adj;({data,error}=await sb.from('ratings').upsert(row,{onConflict:'user_id,visit_id'}).select('id').single())}
     if(error)throw error;
     r.synced=true;r.pk=pk;r.serverId=data.id;return true;
   }catch(err){console.warn('sync',err);return false}
@@ -2415,6 +2536,8 @@ let resetArmed=0,wipeArmed=0;
 document.addEventListener('click',e=>{
   const rc=e.target.closest('[data-reason]');
   if(rc){rc.setAttribute('aria-pressed',rc.getAttribute('aria-pressed')==='true'?'false':'true');return}
+  const mv=e.target.closest('[data-mv]');
+  if(mv){const li=mv.closest('.litem'),ol=mv.closest('.lgrp');if(li&&ol)moveItem(ol.dataset.g,li.dataset.k,mv.dataset.mv==='up'?-1:1);return}
   const t=e.target.closest('[data-tab],[data-act],[data-open],[data-cmd],[data-filter],[data-mode],[data-follow],[data-mapfilter]');
   const uf=e.target.closest('[data-unfriend]');
   if(uf&&sb){sb.rpc('remove_friend',{other:uf.dataset.unfriend}).then(({error})=>{if(error)toast(friendly(error));else{toast('Removed from friends');pullShared(true)}});return}
@@ -2508,7 +2631,7 @@ document.addEventListener('click',e=>{
 let dialRaf=0;
 document.addEventListener('change',e=>{
   const id=e.target.id,f=state.find;if(!f)return;
-  if(id==='fCat')f.cat=e.target.value;else if(id==='fDist')f.dist=+e.target.value;else if(id==='fSort')f.sort=e.target.value;else return;
+  if(id==='fCat')f.cat=e.target.value;else if(id==='fWho')f.who=e.target.value;else if(id==='fDist')f.dist=+e.target.value;else if(id==='fSort')f.sort=e.target.value;else return;
   save();renderRank();
 });
 document.addEventListener('input',e=>{
