@@ -176,16 +176,15 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .ltier{display:flex;align-items:center;gap:8px;margin:10px 0 2px}
 .ltier .fine{margin:0}
 .lgrp{list-style:none;margin:0;padding:0}
-.litem{display:grid;grid-template-columns:auto 22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);background:var(--bg)}
+.litem{display:grid;grid-template-columns:auto 22px minmax(0,1fr);gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);background:var(--bg)}
 .litem.ro{grid-template-columns:22px minmax(0,1fr)}
 .litem.dragging{position:relative;z-index:2;box-shadow:0 6px 18px rgb(0 0 0 / .18);border-radius:10px}
-.lhandle{appearance:none;border:0;background:none;touch-action:none;cursor:grab;color:var(--muted);font:700 18px/1 var(--f-body);padding:10px 8px;letter-spacing:-2px}
+.lhandle{appearance:none;border:0;background:var(--surface-2);touch-action:none;cursor:grab;color:var(--ink);width:52px;height:56px;border-radius:12px;display:grid;place-items:center;padding:0}
+.lhandle svg{width:26px;height:26px}
+.lhandle:active{cursor:grabbing;background:var(--accent-soft);color:var(--accent)}
 .lpos{font:500 13px var(--f-mono);color:var(--muted);text-align:right}
 .lname{appearance:none;border:0;background:none;text-align:left;padding:4px 0;min-width:0;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;gap:2px}
 .lname .nm{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lmv{display:flex;gap:4px}
-.lmv button{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:13px;cursor:pointer}
-.lmv button:disabled{opacity:.3;cursor:default}
 
 .rankhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .rankhead + .lede{margin-top:-8px}
@@ -1330,8 +1329,9 @@ function moveItem(g,k,d){
   const keys=state.order[g]?state.order[g].slice():mem.slice().sort((a,b)=>b.r.ts-a.r.ts).map(x=>x.key);
   const i=keys.indexOf(k),j=i+d;if(i<0||j<0||j>=keys.length)return;
   [keys[i],keys[j]]=[keys[j],keys[i]];setOrder(g,keys);
-  requestAnimationFrame(()=>{const b=document.querySelector(`.lgrp[data-g="${CSS.escape(g)}"] .litem[data-k="${CSS.escape(k)}"] [data-mv="${d<0?'up':'down'}"]`);if(b&&!b.disabled)b.focus()});
+  requestAnimationFrame(()=>{const b=document.querySelector(`.lgrp[data-g="${CSS.escape(g)}"] .litem[data-k="${CSS.escape(k)}"] .lhandle`);if(b)b.focus()});
 }
+const GRIP='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.9"/><circle cx="15" cy="5" r="1.9"/><circle cx="9" cy="12" r="1.9"/><circle cx="15" cy="12" r="1.9"/><circle cx="9" cy="19" r="1.9"/><circle cx="15" cy="19" r="1.9"/></svg>';
 function listCats(){return CATS.map(c=>c[0]).sort((a,b)=>a.localeCompare(b)).concat(['Everything else'])}
 function renderMyList(){
   const f=state.find,fr=friendsList.length?friendsList:world.users.filter(u=>state.friends.includes(u.id));
@@ -1359,11 +1359,11 @@ function renderMyList(){
       const note=items.length<2?'':mine?(ordered?'Your order counts':'Drag to order · not ordered yet'):(ordered?`${esc(name)}’s order`:'Not ordered yet');
       const canMove=mine&&!q&&items.length>1;
       part+=`<div class="ltier">${tierHTML(t)}<span class="fine">${items.length} place${items.length===1?'':'s'}${note?' · '+note:''}</span></div><ol class="lgrp" data-g="${esc(g)}">`+vis.map((x,i)=>{const m=meta(x.r.key);
-        return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}">${canMove?'<button class="lhandle" aria-label="Drag to reorder">⋮⋮</button>':''}<span class="lpos">${items.indexOf(x)+1}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}</span><span class="rsub">${esc(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.hood+' · '+m.cuisine)} · ${ago(x.r.ts).toLowerCase()}</span></button>${canMove?`<span class="lmv"><button data-mv="up" aria-label="Move ${esc(m.name)} up"${i===0?' disabled':''}>▲</button><button data-mv="down" aria-label="Move ${esc(m.name)} down"${i===vis.length-1?' disabled':''}>▼</button></span>`:''}</li>`}).join('')+'</ol>';
+        return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}">${canMove?`<button class="lhandle" aria-label="Move ${esc(m.name)}: drag, or use the up and down arrow keys">${GRIP}</button>`:''}<span class="lpos">${items.indexOf(x)+1}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}</span><span class="rsub">${esc(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.hood+' · '+m.cuisine)} · ${ago(x.r.ts).toLowerCase()}</span></button></li>`}).join('')+'</ol>';
     }
     if(part)html+=`<li class="lcat"><h3>${esc(cat)}</h3>${part}</li>`;
   }
-  $('#fNote').textContent=mine?'Your places by food type and rating. Drag ⋮⋮ or use ▲▼ to put your favorite on top of each group. Your order nudges scores a little within the rating you gave, and friends can see it.'
+  $('#fNote').textContent=mine?'Your places by food type and rating. Drag the handle to put your favorite on top of each group. Your order nudges scores a little within the rating you gave, and friends can see it.'
     :`${name}’s places by food type and rating, in the order they put them.`;
   $('#rankWhere').textContent=mine?'My list':name+'’s list';
   $('#rankList').innerHTML=html||`<li class="emptyrow">${all.length?'Nothing matches. Try another food type.':mine?`You haven’t rated anything in the last ${state.params.window} days yet.`:`${esc(name)} hasn’t rated anything in the last ${state.params.window} days.`}</li>`;
@@ -1381,6 +1381,8 @@ document.addEventListener('pointermove',e=>{
 },{passive:false});
 function endDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=null;d.li.classList.remove('dragging');
   if(d.moved)setOrder(d.ol.dataset.g,[...d.ol.children].map(x=>x.dataset.k))}
+document.addEventListener('keydown',e=>{const h=e.target.closest&&e.target.closest('.lhandle');if(!h||(e.key!=='ArrowUp'&&e.key!=='ArrowDown'))return;e.preventDefault();
+  const li=h.closest('.litem'),ol=h.closest('.lgrp');moveItem(ol.dataset.g,li.dataset.k,e.key==='ArrowUp'?-1:1)});
 document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
 function rowHTML(p){
   const m=meta(p.key), o=(isF()?G:F).by.get(p.key);
@@ -2536,8 +2538,6 @@ let resetArmed=0,wipeArmed=0;
 document.addEventListener('click',e=>{
   const rc=e.target.closest('[data-reason]');
   if(rc){rc.setAttribute('aria-pressed',rc.getAttribute('aria-pressed')==='true'?'false':'true');return}
-  const mv=e.target.closest('[data-mv]');
-  if(mv){const li=mv.closest('.litem'),ol=mv.closest('.lgrp');if(li&&ol)moveItem(ol.dataset.g,li.dataset.k,mv.dataset.mv==='up'?-1:1);return}
   const t=e.target.closest('[data-tab],[data-act],[data-open],[data-cmd],[data-filter],[data-mode],[data-follow],[data-mapfilter]');
   const uf=e.target.closest('[data-unfriend]');
   if(uf&&sb){sb.rpc('remove_friend',{other:uf.dataset.unfriend}).then(({error})=>{if(error)toast(friendly(error));else{toast('Removed from friends');pullShared(true)}});return}
