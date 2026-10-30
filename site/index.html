@@ -373,6 +373,7 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .myrate{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
 .myrate .mrtop{display:flex;align-items:center;gap:8px;font-weight:650}
 .myrate .cmt{margin:0}
+.myrate .delr{align-self:flex-start;padding:4px 0;font-size:13.5px}
 .myrate img{width:100%;max-height:220px;object-fit:cover;border-radius:10px}
 .dscore{display:flex;align-items:center;gap:14px}
 .dscore .score{font-size:30px;padding:10px 12px;border-radius:12px}
@@ -949,6 +950,7 @@ async function photoInit(){
   }catch(e){PH.db=null}
 }
 function photoPut(id,data){PH.mem.set(id,data);try{if(PH.db)PH.db.transaction('p','readwrite').objectStore('p').put(data,id)}catch(e){}}
+function photoDel(id){PH.mem.delete(id);try{if(PH.db)PH.db.transaction('p','readwrite').objectStore('p').delete(id)}catch(e){}}
 function photoClear(){PH.mem.clear();try{if(PH.db)PH.db.transaction('p','readwrite').objectStore('p').clear()}catch(e){}}
 async function shrink(file){
   const url=URL.createObjectURL(file),img=new Image();
@@ -1284,6 +1286,7 @@ function rate(v,tier,reasons){
   const dr=state.drafts[v.id]||{};
   const rec={reasons:reasons||null,id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),visitId:v.id,key:v.key,tier,ts:v.start,at:Date.now(),sample:v.source==='sample',prevTokens:state.tokens,prevSince:state.sinceToken,comment:dr.comment||null,photo:dr.photo||null,wasSkipped:state.skipped[v.id]||0};
   delete state.drafts[v.id];delete state.skipped[v.id];
+  if(state.delq&&state.delq.includes(v.id))state.delq=state.delq.filter(x=>x!==v.id);   /* rated again after an undo: the new rating replaces the shared one */
   if(tier===4){state.tokens--;celebrate()}
   state.sinceToken++;let earned=false,capped=false;
   if(state.sinceToken>=10){state.sinceToken=0;if(state.tokens<3){state.tokens++;earned=true}else capped=true}
@@ -1293,6 +1296,20 @@ function rate(v,tier,reasons){
   if(sb&&me)pushRating(rec).then(ok=>{if(ok)save()});
   if(earned)toast('You earned another Extraordinary.');else if(tier===0)toast(`Problem reported · ${meta(v.key).name}`);
   if(needsName(v.key)&&!(state.nameAsked||{})[v.key]){(state.nameAsked=state.nameAsked||{})[v.key]=Date.now();save();setTimeout(()=>askNames([v.key]),350)}
+}
+function deleteRating(id){
+  const i=state.myReviews.findIndex(r=>r.id===id);if(i<0)return;
+  const r=state.myReviews.splice(i,1)[0];
+  unshareRating(r);
+  if(r.photo)photoDel(r.photo);
+  if(r.tier===4)state.tokens=Math.min(3,state.tokens+1);              /* you get that Extraordinary back */
+  if(r.visitId&&!state.dismissed.includes(r.visitId))state.dismissed.push(r.visitId);   /* the visit disappears, even after a re-import */
+  delete state.drafts[r.visitId];delete state.skipped[r.visitId];
+  state.undo=state.undo.filter(a=>!(a.type==='rate'&&a.id===id));
+  save();refresh();renderHeader();
+  const left=state.myReviews.some(x=>canon(x.key)===canon(r.key));
+  if(left&&openKey)openDetail(openKey);else closeDetail();
+  toast(`Rating deleted${r.tier===4?'. Your Extraordinary is back':''}.`);
 }
 function pushUndo(a){state.undo.push(a);if(state.undo.length>30)state.undo.shift()}
 function undo(){
@@ -1585,9 +1602,8 @@ function openDetail(key){
     html+=`<p class="fine">${isF()?`None of your friends rated this in the last ${P.window} days. Switch to Global to see everyone’s ratings.`:`No ratings from the last ${P.window} days, so this place has no score right now.`}</p>`;
   }
   /* your own rating, right under the score */
-  const myR=state.myReviews.filter(r=>canon(r.key)===ck).sort((a,b)=>b.ts-a.ts)[0];
-  if(myR){const ph=(myR.photo&&PH.mem.get(myR.photo))||(myR.photoPath&&photoUrls[myR.photoPath]);
-    html+=`<div class="myrate"><div class="mrtop">${ytier(myR.tier)}<span>You said <b>${TIERS[myR.tier].label}</b> · ${ago(myR.ts).toLowerCase()}</span></div>${myR.tier===0&&myR.reasons?`<div class="rsn">${myR.reasons.map(esc).join(' · ')}</div>`:''}${myR.comment?`<p class="cmt">${esc(myR.comment)}</p>`:''}${ph&&ph!==cv?`<img src="${ph}" alt="Your photo">`:''}</div>`}
+  for(const myR of state.myReviews.filter(r=>canon(r.key)===ck).sort((a,b)=>b.ts-a.ts)){const ph=(myR.photo&&PH.mem.get(myR.photo))||(myR.photoPath&&photoUrls[myR.photoPath]);
+    html+=`<div class="myrate"><div class="mrtop">${ytier(myR.tier)}<span>You said <b>${TIERS[myR.tier].label}</b> · ${ago(myR.ts).toLowerCase()}</span></div>${myR.tier===0&&myR.reasons?`<div class="rsn">${myR.reasons.map(esc).join(' · ')}</div>`:''}${myR.comment?`<p class="cmt">${esc(myR.comment)}</p>`:''}${ph&&ph!==cv?`<img src="${ph}" alt="Your photo">`:''}<button class="lnk warn delr" data-cmd="delrating" data-id="${esc(myR.id)}">Delete my rating</button></div>`}
   if(active)html+=`<div>${distHTML(p,true)}<div class="legend">${TLIST.filter(t=>p.cw[t]>0).map(t=>`<span class="t${t}"><i></i>${TIERS[t].label} ${(p.cw[t]/p.sw*100).toFixed(0)}%</span>`).join('')}</div></div>`;
   if(p&&p.all.length){
     const shown=p.all.slice(0,30);
@@ -2720,7 +2736,7 @@ function buildShared(rows){
     const ts=new Date(r.visit_day+'T12:00:00').getTime();
     if(me&&r.who===me.id){
       /* bring back your own ratings if this phone lost them (new phone, cleared browser) */
-      if(r.visit_id&&!state.myReviews.some(x=>x.visitId===r.visit_id))
+      if(r.visit_id&&!state.myReviews.some(x=>x.visitId===r.visit_id)&&!(state.delq||[]).includes(r.visit_id))
         state.myReviews.push({id:'s'+r.id,visitId:r.visit_id,key:r.place_key,tier:r.tier,adj:r.adj||0,ts,at:ts,comment:r.comment,reasons:r.reasons,photoPath:r.photo_path,synced:true,serverId:r.id,prevTokens:state.tokens,prevSince:state.sinceToken});
       continue;
     }
@@ -2769,6 +2785,7 @@ async function pushRating(r){
 }
 async function syncUp(){
   if(!sb||!me)return;
+  await flushDeletes();
   let n=0,fail=0;
   for(const r of state.myReviews){if((r.synced&&r.pk===canon(r.key))||r.key.startsWith('r:'))continue;if(await pushRating(r))n++;else{fail++;break}}
   if(n)save();
@@ -2782,10 +2799,23 @@ function syncPlace(key){
   sb.from('ratings').update({place_name:m.named?m.name.slice(0,120):null,place_label:(m.cuisine&&m.cuisine!=='Timeline stop')?String(m.cuisine).slice(0,80):null})
     .eq('user_id',me.id).eq('place_key',key).then(({error})=>{if(error)console.warn(error)});
 }
+/* remove a rating from the shared database, by visit (works even for ratings shared before the app kept the row's id).
+   Offline or signed out: remembered and retried, so it can't come back from the server later. */
 function unshareRating(r){
-  if(!sb||!me||!r.serverId)return;
-  sb.from('ratings').delete().eq('id',r.serverId).then(({error})=>{if(error)toast('Couldn’t remove the shared rating: '+friendly(error))});
-  if(r.photoPath)sb.storage.from('photos').remove([r.photoPath]);
+  if(!r.visitId)return;
+  if(!state.delq)state.delq=[];
+  if(!state.delq.includes(r.visitId))state.delq.push(r.visitId);
+  if(r.photoPath)(state.delPhotos=state.delPhotos||[]).push(r.photoPath);
+  save();flushDeletes();
+}
+async function flushDeletes(){
+  if(!sb||!me||!(state.delq&&state.delq.length))return;
+  const ids=state.delq.slice();
+  const {error}=await sb.from('ratings').delete().eq('user_id',me.id).in('visit_id',ids);
+  if(error){console.warn('delete',error);return}
+  state.delq=state.delq.filter(x=>!ids.includes(x));
+  const ph=state.delPhotos||[];if(ph.length){sb.storage.from('photos').remove(ph);state.delPhotos=[]}
+  save();
 }
 async function deleteShared(all){
   if(!sb||!me)return true;
@@ -2841,6 +2871,9 @@ document.addEventListener('click',e=>{
     case 'signin':showSignIn(null,($('#email')||{}).value);break;
     case 'closeacct':closeAcct();break;
     case 'fmore':{const r=$('#fMore'),open=r.hidden;r.hidden=!open;t.setAttribute('aria-expanded',open?'true':'false');if(open)$('#fName').focus();break}
+    case 'delrating':{
+      if(t.dataset.armed&&Date.now()-+t.dataset.armed<4000){deleteRating(t.dataset.id);break}
+      t.dataset.armed=Date.now();t.textContent='Tap again to delete';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete my rating'}},4000);break}
     case 'needname':askNames(needNameList());break;
     case 'joincode':showJoinCode(($('#email')||{}).value||'','');break;
     case 'copycode2':{const c=t.dataset.code;try{navigator.clipboard.writeText(c).then(()=>toast('Invite code copied'),()=>toast('Code: '+c))}catch(_){toast('Code: '+c)}break}
