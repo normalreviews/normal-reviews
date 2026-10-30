@@ -1939,7 +1939,9 @@ function fixSearch(){
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 /* Newer Android app: on-phone visit detector (motion sensor + a precise check when you stop + a fence for leaving).
    Older app installs keep the old always-on tracker below. */
-let VD=null;try{VD=NATIVE&&Capacitor.isPluginAvailable&&Capacitor.isPluginAvailable('VisitDetector')?Capacitor.registerPlugin('VisitDetector'):null}catch(e){VD=null;window.__nrShow&&__nrShow('VisitDetector: '+e.message)}
+/* The app loads this page from the web, so Capacitor's JS helper (registerPlugin) isn't there: native plugins live on Capacitor.Plugins. */
+function capPlugin(n){try{const C=window.Capacitor;if(!C)return null;if(C.Plugins&&C.Plugins[n])return C.Plugins[n];if(typeof C.registerPlugin==='function'&&(!C.isPluginAvailable||C.isPluginAvailable(n)))return C.registerPlugin(n)}catch(e){}return null}
+const VD=NATIVE?capPlugin('VisitDetector'):null;
 let VDS=null;
 async function vdRefresh(){if(!VD)return;try{VDS=await VD.status()}catch(e){VDS=null}renderGps()}
 const vdMissing=()=>VDS&&VDS.perms?['location','background','activity'].filter(k=>!VDS.perms[k]):[];
@@ -1984,7 +1986,7 @@ const metersBetween=(a,b)=>Math.hypot((a.lat-b.lat)*110540,(a.lng-b.lng)*Math.co
 async function gpsStart(ask){
   if(!NATIVE)return false;
   try{
-    BG=BG||Capacitor.registerPlugin('BackgroundGeolocation');
+    BG=BG||capPlugin('BackgroundGeolocation');if(!BG)throw new Error('this version of the app can’t detect visits');
     if(gpsWatch)return true;
     gpsWatch=await BG.addWatcher({backgroundTitle:'Normal Reviews',backgroundMessage:'Noticing restaurant visits. Nothing else is kept.',requestPermissions:!!ask,stale:false,distanceFilter:25},
       (loc,err)=>{
@@ -2043,13 +2045,13 @@ async function nudgeCheck(){
   if(n<5){if(GPS.nudged){GPS.nudged=0;gpsSave(GPS)}return}
   if(GPS.nudged&&Date.now()-GPS.nudged<20*3600e3)return;
   try{
-    const LN=Capacitor.registerPlugin('LocalNotifications');
+    const LN=capPlugin('LocalNotifications');if(!LN)return;
     const p=await LN.checkPermissions();if(p.display!=='granted')return;
     await LN.schedule({notifications:[{id:5005,title:`${n} visits to rate`,body:'Swipe through them while you still remember the food.'}]});
     GPS.nudged=Date.now();gpsSave(GPS);
   }catch(e){console.warn('nudge',e)}
 }
-async function askNotify(){if(!NATIVE)return;try{const LN=Capacitor.registerPlugin('LocalNotifications');const p=await LN.checkPermissions();if(p.display!=='granted')await LN.requestPermissions()}catch(e){}}
+async function askNotify(){if(!NATIVE)return;try{const LN=capPlugin('LocalNotifications');if(!LN)return;const p=await LN.checkPermissions();if(p.display!=='granted')await LN.requestPermissions()}catch(e){}}
 function renderGps(){
   const box=$('#gpsPanel');if(!box)return;
   box.hidden=!NATIVE;if(!NATIVE)return;
