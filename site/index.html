@@ -455,12 +455,11 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <p class="lede" id="rankLede"></p>
       <div class="finder" id="finder">
         <div class="frow">
-          <label for="fCat">Category<select id="fCat"></select></label>
+          <label for="fCat">Food type<select id="fCat"></select></label>
           <label for="fDist">Distance<select id="fDist"><option value="1">Within 1 mi</option><option value="3">Within 3 mi</option><option value="10">Within 10 mi</option><option value="25">Within 25 mi</option><option value="0">Anywhere</option></select></label>
         </div>
         <div class="frow">
-          <label for="fFrom">From<select id="fFrom"><option value="me">Where I am</option><option value="zip">A ZIP code</option></select></label>
-          <label for="fZip" id="fZipWrap" hidden>ZIP code<input id="fZip" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="e.g. 94110"></label>
+          <label for="fZip">ZIP code<input id="fZip" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="Blank = where I am"></label>
           <label for="fSort">Sort<select id="fSort"><option value="best">Best score</option><option value="near">Closest</option></select></label>
         </div>
         <input id="fName" type="search" autocomplete="off" placeholder="Search by name" aria-label="Search by name">
@@ -1249,7 +1248,7 @@ let findPos=null,findAsked=false,ZIPS=null,zipP=null;
 const loadZips=()=>zipP||(zipP=fetch('places/zips.json').then(r=>r.ok?r.json():null).then(j=>(ZIPS=j&&j.z)||null).catch(()=>{zipP=null;return null}));
 function findCenter(){
   const f=state.find;
-  if(f.from==='zip'){if(!/^\d{5}$/.test(f.zip||''))return {why:'Type a 5-digit ZIP code.'};if(!ZIPS){loadZips().then(z=>{if(z)renderRank()});return {why:'Loading ZIP codes…'}}const z=ZIPS[f.zip];return z?{lat:z[0],lng:z[1],label:'ZIP '+f.zip}:{why:'That ZIP code isn’t in CA, OR, WA or NV.'}}
+  if(f.zip){if(!/^\d{5}$/.test(f.zip))return {why:'Type all 5 digits of the ZIP code.'};if(!ZIPS){loadZips().then(z=>{if(z)renderRank()});return {why:'Loading ZIP codes…'}}const z=ZIPS[f.zip];return z?{lat:z[0],lng:z[1],label:'ZIP '+f.zip}:{why:'That ZIP code isn’t in CA, OR, WA or NV.'}}
   if(findPos)return {...findPos,label:'you'};
   if(!findAsked&&current==='rankings'&&navigator.geolocation){findAsked=true;
     navigator.geolocation.getCurrentPosition(p=>{findPos={lat:p.coords.latitude,lng:p.coords.longitude};renderRank()},()=>renderRank(),{enableHighAccuracy:false,timeout:12000,maximumAge:300000});
@@ -1262,10 +1261,10 @@ const miles=d=>d/1609.34;
 function renderFinder(L){
   const f=state.find,cats={};
   for(const p of L){const c=catOf(meta(p.key));cats[c]=(cats[c]||0)+1}
-  const opts=[['all',`All categories (${L.length})`]].concat(CATS.map(c=>c[0]).concat(['Everything else']).filter(c=>cats[c]).map(c=>[c,`${c} (${cats[c]})`]));
-  if(f.cat!=='all'&&!cats[f.cat])opts.push([f.cat,`${f.cat} (0)`]);
+  const names=CATS.map(c=>c[0]).sort((a,b)=>a.localeCompare(b)).concat(['Everything else']);
+  const opts=[['all',`All food types (${L.length})`]].concat(names.map(c=>[c,`${c} (${cats[c]||0})`]));
   $('#fCat').innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}"${v===f.cat?' selected':''}>${esc(l)}</option>`).join('');
-  $('#fDist').value=String(f.dist);$('#fFrom').value=f.from;$('#fSort').value=f.sort;$('#fZipWrap').hidden=f.from!=='zip';
+  $('#fDist').value=String(f.dist);$('#fSort').value=f.sort;
   if(document.activeElement!==$('#fZip'))$('#fZip').value=f.zip||'';
 }
 function rowHTML(p){
@@ -1291,11 +1290,11 @@ function renderRank(){
   const q=(f.name||'').trim().toLowerCase();if(q)shown=shown.filter(p=>meta(p.key).name.toLowerCase().includes(q));
   for(const p of shown){const m=meta(p.key);p._d=c&&isFinite(c.lat)&&isFinite(m.lat)?metersBetween(c,m):NaN}
   if(f.dist&&c&&isFinite(c.lat))shown=shown.filter(p=>isFinite(p._d)&&miles(p._d)<=f.dist);
-  else if(f.dist&&f.from==='zip')shown=[];                 /* no usable ZIP yet: show nothing rather than everything */
+  else if(f.dist&&f.zip)shown=[];                 /* no usable ZIP yet: show nothing rather than everything */
   if(f.sort==='near')shown.sort((a,b)=>(isFinite(a._d)?a._d:1e12)-(isFinite(b._d)?b._d:1e12));
-  $('#rankWhere').textContent=!f.dist?'Everywhere':c&&c.label?(c.label==='you'?'Near you':c.fallback?'Near your last visit':'Near '+c.label):f.from==='zip'?'By ZIP code':'Near you';
+  $('#rankWhere').textContent=!f.dist?'Everywhere':c&&c.label?(c.label==='you'?'Near you':c.fallback?'Near your last visit':'Near '+c.label):f.zip?'By ZIP code':'Near you';
   $('#fNote').textContent=!f.dist?`${shown.length} place${shown.length===1?'':'s'}, any distance.`:c&&c.why?c.why:`${shown.length} place${shown.length===1?'':'s'} within ${f.dist} mi of ${c.label}${c.fallback?' (location is off)':''}.`;
-  $('#rankList').innerHTML=shown.length?shown.map(rowHTML).join(''):`<li class="emptyrow">${L.length?'No rated places match. Try a wider distance or another category.':`Nothing rated in the last ${P.window} days yet.`}</li>`;
+  $('#rankList').innerHTML=shown.length?shown.map(rowHTML).join(''):`<li class="emptyrow">${L.length?(f.dist&&f.zip&&c&&c.why?esc(c.why):'No rated places match. Try a wider distance or another food type.'):`Nothing rated in the last ${P.window} days yet.`}</li>`;
   document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===rankFilter?'true':'false'));
 }
 
@@ -2509,12 +2508,12 @@ document.addEventListener('click',e=>{
 let dialRaf=0;
 document.addEventListener('change',e=>{
   const id=e.target.id,f=state.find;if(!f)return;
-  if(id==='fCat')f.cat=e.target.value;else if(id==='fDist')f.dist=+e.target.value;else if(id==='fFrom'){f.from=e.target.value;if(f.from==='zip'){loadZips();setTimeout(()=>{const z=$('#fZip');if(z)z.focus()},0)}}else if(id==='fSort')f.sort=e.target.value;else return;
+  if(id==='fCat')f.cat=e.target.value;else if(id==='fDist')f.dist=+e.target.value;else if(id==='fSort')f.sort=e.target.value;else return;
   save();renderRank();
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='fName'&&state.find){state.find.name=e.target.value;renderRank();return}
-  if(e.target.id==='fZip'&&state.find){const z=e.target.value.replace(/\D/g,'').slice(0,5);state.find.zip=z;save();if(z.length===5||!z)renderRank();return}
+  if(e.target.id==='fZip'&&state.find){const z=e.target.value.replace(/\D/g,'').slice(0,5);if(e.target.value!==z)e.target.value=z;state.find.zip=z;if(z)loadZips();save();if(z.length===5||!z)renderRank();return}
   if(e.target.id==='cmtInput'){$('#cmtCount').textContent=e.target.value.length+'/140';return}
 });
 $('#bayOnly').addEventListener('change',e=>{state.bayOnly=e.target.checked;save();refresh();toast(state.bayOnly?'Stops outside CA, OR, WA and NV are hidden':'Stops everywhere are shown')});
