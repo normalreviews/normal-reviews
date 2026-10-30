@@ -1061,6 +1061,8 @@ function deckVisits(){
   }
   return out;
 }
+/* identified by Google's place ID and named from the open map: that name is reliable, so it can't be renamed */
+function googleNamed(k){const tp=state.tplaces[localKey(k)];return !!tp&&(tp.src==='google'||tp.src==='link')&&!tp.needName&&!!tp.name}
 function cardHTML(v){
   const m=meta(v.key), P=state.params, p=G.by.get(canon(v.key)), fs=new Set(state.friends);
   const ppl=p?[...p.people].filter(u=>u!=='me'):[];
@@ -1070,14 +1072,14 @@ function cardHTML(v){
   if(m.tl){
     const url=mapsUrl(m.tp);
     extra=`<div class="btns" data-nodrag>
-      <button class="btn" data-cmd="name" data-key="${esc(v.key)}">${m.named?'Rename':'Name it'}</button>
+      ${googleNamed(v.key)?'':`<button class="btn" data-cmd="name" data-key="${esc(v.key)}">${m.named?'Rename':'Name it'}</button>`}
       ${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open in Maps ↗</a>`:''}
       ${m.named?'':`<button class="btn danger" data-cmd="hide" data-key="${esc(v.key)}">Not food</button>`}</div>`;
     const cands=!m.named&&m.tp&&m.tp.cands;
     const alts=m.tp&&m.tp.osm&&!state.names[v.key]&&m.tp.alts;
     const srch=`<button class="lnk" data-cmd="fixsearch" data-key="${esc(v.key)}">Search…</button>`;
     if(alts&&alts.length)extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span>${alts.map((c,i)=>`<button class="lnk" data-cmd="pickalt" data-key="${esc(v.key)}" data-i="${i}">${esc(c.n)}</button>`).join('')}${srch}<button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
-    else if(m.tp&&!state.names[v.key])extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span>${srch}<button class="lnk" data-cmd="name" data-key="${esc(v.key)}">Type a name</button><button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
+    else if(m.tp&&!state.names[v.key])extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span>${srch}${googleNamed(v.key)?'':`<button class="lnk" data-cmd="name" data-key="${esc(v.key)}">Type a name</button>`}<button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
     if(cands&&cands.length)extra=`<div class="pick" data-nodrag><p class="fine">Were you at…</p><div class="btns">${cands.map((c,i)=>`<button class="btn" data-cmd="pick" data-key="${esc(v.key)}" data-i="${i}">${esc(c.n)} <small class="fine">${c.d} m</small></button>`).join('')}<button class="btn ghost" data-cmd="pick" data-key="${esc(v.key)}" data-i="-1">None of these</button></div></div>`+extra;
   }
   const dr=state.drafts[v.id]||{}, dphoto=dr.photo&&PH.mem.get(dr.photo), photo=dphoto||cover(v.key);
@@ -1621,7 +1623,7 @@ function openDetail(key){
   const cv=cover(key);
   const art=`<div class="dplate" style="--h:${m.hue}"><span class="pchip a">${esc(shortType(m.tl?(m.cuisine!=='Timeline stop'?m.cuisine:''):m.cuisine)||'Restaurant')}</span>${foodArt(m.cuisine+' '+m.name)}</div>`;
   let html=`<div class="grab"></div>${cv?`<img class="cover" src="${cv}" alt="Your photo of ${esc(m.name)}">`:art}<div class="dhead"><div><p class="eyebrow">${esc(m.tl?m.sub:m.hood+' · '+m.cuisine)}</p><h2 class="cname">${esc(m.name)}</h2></div><button class="xbtn" data-cmd="close" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
-  if(m.tl){const url=mapsUrl(m.tp);html+=`<div class="btns"><button class="btn" data-cmd="name" data-key="${esc(key)}">${m.named?'Rename':'Name it'}</button>${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open in Maps ↗</a>`:''}</div>`}
+  if(m.tl){const url=mapsUrl(m.tp);html+=`<div class="btns">${googleNamed(key)?'':`<button class="btn" data-cmd="name" data-key="${esc(key)}">${m.named?'Rename':'Name it'}</button>`}${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open in Maps ↗</a>`:''}</div>`}
   if(active){
     const pct=Math.max(1,Math.ceil(p.rank/L.length*100)),o=(isF()?G:F).by.get(ck);
     html+=`<div class="dbig">${scoreHTML(p.score)}<p><b>${pct<=50?'Top '+pct+'%':'Bottom '+(101-pct)+'%'} ${isF()?'among friends':'in town'}</b> · #${p.rank} of ${L.length}<br>${p.n} rating${p.n===1?'':'s'} in the last ${P.window} days<span class="other">${isF()?'Global':'Friends'}: ${o&&o.n?o.score.toFixed(2):'no ratings yet'}</span></p></div>`;
