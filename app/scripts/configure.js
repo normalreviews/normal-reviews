@@ -7,7 +7,7 @@ const cfg = {
   webDir: 'www',
   // The app opens the hosted site, so ordinary updates arrive without reinstalling.
   server: { url: env.APP_URL || 'https://normal-reviews.pages.dev', androidScheme: 'https', cleartext: false },
-  // Keeps location updates flowing to the page while the app is in the background (background-geolocation plugin docs).
+  // Lets the page keep running briefly in the background (visit detection itself runs natively: native/visits).
   android: { useLegacyBridge: true }
 };
 fs.writeFileSync(__dirname + '/../capacitor.config.json', JSON.stringify(cfg, null, 2));
