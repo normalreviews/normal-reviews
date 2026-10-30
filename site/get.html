@@ -44,7 +44,7 @@ ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 (function(){
   'use strict';
   /* the invite link: Android phones get the app, everyone else goes straight to the web app's join screen */
-  var h=location.hash.match(/c=(\d{6})/),e=location.hash.match(/e=([^&]*)/),code=h?h[1]:'',email='';
+  var h=location.hash.match(/c=([A-Za-z0-9]{6,8})/),e=location.hash.match(/e=([^&]*)/),code=h?h[1].toUpperCase():'',email='';
   try{email=e?decodeURIComponent(e[1]):''}catch(_){}
   var web='./'+(code?'#join='+code+(email?'&e='+encodeURIComponent(email):''):'');
   var android=/Android/i.test(navigator.userAgent);
@@ -52,8 +52,8 @@ ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
   var dev=/^dev\./.test(location.hostname);
   var apk=dev?'https://github.com/normalreviews/normal-reviews/releases/download/android-dev/normal-reviews-dev.apk'
              :'https://github.com/normalreviews/normal-reviews/releases/download/android-latest/normal-reviews.apk';
-  document.getElementById('code').textContent=code||'—';
-  document.getElementById('for').textContent=email?'Works once, for '+email+'.':'';
+  document.getElementById('code').textContent=code?(code.length===8?code.slice(0,4)+'-'+code.slice(4):code):'—';
+  document.getElementById('for').textContent=email?'Works once, for '+email+'.':'Works once, for 14 days.';
   document.getElementById('web').href=web;
   document.getElementById('get').onclick=function(){
     var go=function(){location.href=apk};

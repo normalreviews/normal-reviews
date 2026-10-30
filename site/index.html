@@ -601,8 +601,8 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </div>
       <div class="panel" id="invitePanel" hidden>
         <div class="listhead"><h2 class="h2">Invite someone</h2><span class="fine" id="betaSpots"></span></div>
-        <p class="fine">They get a link and a 6-digit invite code that works once, for their email, for 14 days. The link gives Android phones the app and opens the web app on iPhones. They choose their own PIN, and you become friends automatically.</p>
-        <form id="inviteForm" class="addf"><input id="inviteEmail" type="email" inputmode="email" autocomplete="off" placeholder="Their email" aria-label="Their email"><button class="btn primary" data-cmd="invite" type="button">Create invite</button></form>
+        <p class="fine">Make an invite and send the message however you like: text, WhatsApp, email. The code works once, for 14 days. The link gives Android phones the app and opens the web app on iPhones. They choose their own PIN, and you become friends automatically.</p>
+        <div class="btns"><button class="btn primary" data-cmd="invite" type="button">Create invite</button></div>
         <div id="inviteResult"></div>
         <ul class="people" id="inviteList"></ul>
       </div>
@@ -801,7 +801,7 @@ function save(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
 const MOVE_IN=location.hash.startsWith('#move=')?location.hash.slice(6):null;
 let joinToken=(location.hash.match(/^#invite=([a-f0-9]{8,64})$/)||[])[1]||null;   /* an old invite link: #invite=<token> */
 /* a new invite: #join=<6-digit code>&e=<email>, opened from the invite page on an iPhone or in a browser */
-let joinCode=null,joinEmail='';{const m=location.hash.match(/^#join=(\d{6})(?:&e=([^&]*))?$/);if(m){joinCode=m[1];try{joinEmail=decodeURIComponent(m[2]||'')}catch(e){}}}
+let joinCode=null,joinEmail='';{const m=location.hash.match(/^#join=([A-Za-z0-9]{6,8})(?:&e=([^&]*))?$/);if(m){joinCode=m[1];try{joinEmail=decodeURIComponent(m[2]||'')}catch(e){}}}
 const MOVE_TO=location.hostname==='normalreviews.netlify.app'?'https://normal-reviews.pages.dev/'
   :/--normalreviews\.netlify\.app$/.test(location.hostname)?'https://dev.normal-reviews.pages.dev/':null;
 async function packMove(){
@@ -2475,8 +2475,8 @@ const friendly=err=>{const m=(err&&err.message)||String(err);
   if(/failed to fetch|network/i.test(m))return 'No connection. Check your internet and try again.';
   if(/invalid login credentials/i.test(m))return 'That email and PIN don’t match. Check the PIN you were sent.';
   if(/pin length/i.test(m))return 'Your PIN is 4 digits.';
-  if(/code length/i.test(m))return 'The invite code is 6 digits.';
-  if(/invite_nomatch/.test(m))return 'That code doesn’t match that email. Check both against the invite you got.';
+  if(/code length/i.test(m))return 'The invite code is 8 letters and numbers, like KX7P-M2QD.';
+  if(/invite_nomatch/.test(m))return 'That invite code isn’t right. Check it against the message you got.';
   if(/invite_used/.test(m))return 'That invite code was already used. If it was you, sign in with your email and PIN.';
   if(/invite_expired/.test(m))return 'That invite code has expired. Ask the person who invited you for a new one.';
   if(/invite_full/.test(m))return 'The beta is full right now. Ask the person who invited you to check back later.';
@@ -2601,28 +2601,34 @@ function showSignIn(step,email){
 async function renderInvites(){
   if(!sb||!me)return;
   try{
-    const [{data:st},{data:inv}]=await Promise.all([sb.rpc('beta_status'),sb.from('invites').select('token,email,created_at,expires_at,used_at').order('created_at',{ascending:false}).limit(20)]);
+    const [{data:st},{data:inv}]=await Promise.all([sb.rpc('beta_status'),sb.from('invites').select('token,email,created_at,expires_at,used_at,used_by').order('created_at',{ascending:false}).limit(20)]);
     if(st){const left=Math.max(0,st.max-st.users);$('#betaSpots').textContent=`${left} of ${st.max} spots left`}
     const now=Date.now(),d=t=>new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric'});
-    $('#inviteList').innerHTML=(inv||[]).map(i=>`<li><span class="av anon" aria-hidden="true">@</span><div><div class="nm">${esc(i.email)}</div><div class="meta">${i.used_at?'Joined '+d(i.used_at):Date.parse(i.expires_at)<now?'Expired':(/^\d{6}$/.test(i.token||'')?'Waiting · code <b>'+esc(i.token)+'</b>':'Waiting')+' · works until '+d(i.expires_at)}</div></div></li>`).join('');
+    const joined=i=>{const f=friendsList.find(x=>x.id===i.used_by);return 'Joined '+d(i.used_at)+(f?' · '+esc(f.name):'')};
+    $('#inviteList').innerHTML=(inv||[]).map(i=>{const open=!i.used_at&&Date.parse(i.expires_at)>=now;
+      return `<li><span class="av anon" aria-hidden="true">${i.used_at?'✓':'@'}</span><div><div class="nm">${i.email?esc(i.email):'Code '+esc(fmtCode(i.token||''))}</div><div class="meta">${i.used_at?joined(i):!open?'Expired':`Waiting${i.email?' · code <b>'+esc(fmtCode(i.token||''))+'</b>':''} · works until ${d(i.expires_at)}`}</div></div>${open?`<button class="follow" data-cmd="copymsg" data-code="${esc(i.token)}">Copy</button>`:''}</li>`}).join('');
   }catch(e){console.warn('invites',e)}
 }
-const inviteLink=(code,email)=>location.origin+location.pathname.replace(/[^/]*$/,'')+'get#c='+code+'&e='+encodeURIComponent(email);
+const fmtCode=c=>/^[A-Z0-9]{8}$/.test(c)?c.slice(0,4)+'-'+c.slice(4):c;
+const inviteLink=(code,email)=>location.origin+location.pathname.replace(/[^/]*$/,'')+'get#c='+code+(email?'&e='+encodeURIComponent(email):'');
+function inviteMessage(code){
+  const from=(myProfile&&myProfile.display_name)||'A friend';
+  return `${from} invited you to the Normal Reviews beta: honest restaurant scores from the places people actually eat.\n\nOpen this on your phone:\n${inviteLink(code)}\n(Android phones get the app; iPhones open it in Safari.)\n\nYour invite code: ${fmtCode(code)}\nTap “Got an invite code? Join”, enter your email and the code, and pick a 4-digit PIN. The code works once, for 14 days.\n\nYour Timeline stays on your phone; only restaurants you rate are shared.`;
+}
+function showInvite(code){
+  const msg=inviteMessage(code),link=inviteLink(code),canShare=!!navigator.share;
+  $('#inviteResult').innerHTML=`<div class="invbox"><p class="fine">New invite. Invite code:</p><p class="pinbig">${esc(fmtCode(code))}</p><p class="invlink">${esc(link)}</p>
+    <div class="btns">${canShare?`<button class="btn primary" data-cmd="shareinvite" data-code="${esc(code)}">Share</button>`:''}<button class="btn${canShare?'':' primary'}" data-cmd="copymsg" data-code="${esc(code)}">Copy message</button><button class="btn" data-cmd="copyinvite" data-link="${esc(link)}">Copy link</button></div></div>`;
+}
 async function createInvite(btn){
-  const em=($('#inviteEmail').value||'').trim();if(!em){toast('Type their email first.');$('#inviteEmail').focus();return}
   btn.disabled=true;
   try{
-    const {data:token,error}=await sb.rpc('create_invite',{p_email:em});if(error)throw error;
-    const e=em.trim().toLowerCase(),code=String(token),from=(myProfile&&myProfile.display_name)||'A friend';
-    const link=/^\d{6}$/.test(code)?inviteLink(code,e):location.origin+location.pathname+'#invite='+code;
-    const body=`${from} invited you to the Normal Reviews beta: honest restaurant scores from the places people actually eat.\n\nOpen this on your phone:\n${link}\n(Android phones get the app; iPhones open it in Safari.)\n\nYour invite code: ${code}\nIt works once, for ${e}, for 14 days. In the app, tap “Got an invite code? Join”, type your email and the code, and pick a 4-digit PIN.\n\nYour Timeline stays on your phone; only restaurants you rate are shared.`;
-    const mail='mailto:'+encodeURIComponent(em)+'?subject='+encodeURIComponent('Join me on Normal Reviews')+'&body='+encodeURIComponent(body);
-    $('#inviteResult').innerHTML=`<div class="invbox"><p class="fine">Invite for <b>${esc(em)}</b>. Invite code:</p><p class="pinbig">${esc(code)}</p><p class="invlink">${esc(link)}</p>
-      <div class="btns"><a class="btn primary" href="${esc(mail)}">Email it</a><button class="btn" data-cmd="copycode2" data-code="${esc(code)}">Copy code</button><button class="btn" data-cmd="copyinvite" data-link="${esc(link)}">Copy link</button></div></div>`;
-    $('#inviteEmail').value='';renderInvites();
+    const {data:token,error}=await sb.rpc('create_invite_code');if(error)throw error;
+    showInvite(String(token));renderInvites();
   }catch(e){toast(friendly(e))}
   finally{btn.disabled=false}
 }
+async function copyText(t,done){try{await navigator.clipboard.writeText(t);toast(done)}catch(e){toast('Couldn’t copy. Press and hold the text to copy it.')}}
 /* ---------- joining from an invite link ---------- */
 const APK_URL=/^dev\./.test(location.hostname)?'https://github.com/normalreviews/normal-reviews/releases/download/android-dev/normal-reviews-dev.apk':'https://github.com/normalreviews/normal-reviews/releases/download/android-latest/normal-reviews.apk';
 let pendingWelcome=null;
@@ -2650,10 +2656,10 @@ async function showJoin(token){
 function showJoinCode(email,code){
   if(!sb)return;
   acctOpen(`<h2 class="h2">Join the beta</h2>
-    <p class="fine">Type the email your invite was sent to and the 6-digit invite code from it, then pick a 4-digit PIN. Your Timeline and visits stay on your phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
+    <p class="fine">Enter your email and the invite code you got, then pick a 4-digit PIN. Your Timeline and visits stay on your phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
     <form class="acctf col" data-form="joinc">
       <input id="jemail" type="email" autocomplete="email" inputmode="email" placeholder="Email the invite was sent to" value="${esc(email||'')}" aria-label="Email" required>
-      <input id="jcode" type="text" inputmode="numeric" maxlength="7" autocomplete="one-time-code" placeholder="6-digit invite code" value="${esc(code||'')}" aria-label="6-digit invite code" required>
+      <input id="jcode" type="text" maxlength="9" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Invite code" value="${esc(fmtCode(String(code||'').toUpperCase()))}" aria-label="Invite code" required>
       <input id="jname" maxlength="40" autocomplete="given-name" placeholder="Your first name (friends see this)" aria-label="Your name" required>
       <input id="jpin" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="Choose a 4-digit PIN" aria-label="Choose a 4-digit PIN" required>
       <div class="btns"><button class="btn primary">Join the beta</button></div>
@@ -2676,7 +2682,6 @@ function askName(){
     <form class="acctf" data-form="name"><input id="dname" maxlength="40" placeholder="Your first name" value="${esc(myProfile&&myProfile.display_name||'')}" aria-label="Your name" required><button class="btn primary">Save</button></form>`);
 }
 document.addEventListener('submit',async e=>{
-  if(e.target.id==='inviteForm'){e.preventDefault();createInvite(e.target.querySelector('button'));return}
   const f=e.target.closest('.acctf,#addFriendForm');if(!f||!sb)return;
   e.preventDefault();
   const btn=f.querySelector('button');btn.disabled=true;
@@ -2692,9 +2697,9 @@ document.addEventListener('submit',async e=>{
       if(!data.session){pendingWelcome=null;throw new Error('confirm email is on')}
       joinToken=null;
     }else if(f.dataset.form==='joinc'){
-      const email=f.querySelector('#jemail').value.trim().toLowerCase(),code=f.querySelector('#jcode').value.replace(/\D/g,''),
+      const email=f.querySelector('#jemail').value.trim().toLowerCase(),code=f.querySelector('#jcode').value.toUpperCase().replace(/[^A-Z0-9]/g,''),
         name=f.querySelector('#jname').value.trim().slice(0,40),pin=f.querySelector('#jpin').value.replace(/\D/g,'');
-      if(code.length!==6)throw new Error('code length');
+      if(!(code.length===8||/^\d{6}$/.test(code)))throw new Error('code length');
       if(!name)throw new Error('name needed');
       if(pin.length!==4)throw new Error('pin length');
       const {data:chk,error:ce}=await sb.rpc('invite_check',{p_email:email,p_code:code});if(ce)throw ce;
@@ -2924,6 +2929,8 @@ document.addEventListener('click',e=>{
       t.dataset.armed=Date.now();t.textContent='Tap again to delete';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete my rating'}},4000);break}
     case 'needname':askNames(needNameList());break;
     case 'joincode':showJoinCode(($('#email')||{}).value||'','');break;
+    case 'copymsg':copyText(inviteMessage(t.dataset.code),'Invite message copied. Paste it in a text or email.');break;
+    case 'shareinvite':{const c=t.dataset.code;navigator.share({title:'Join me on Normal Reviews',text:inviteMessage(c)}).catch(()=>{});break}
     case 'copycode2':{const c=t.dataset.code;try{navigator.clipboard.writeText(c).then(()=>toast('Invite code copied'),()=>toast('Code: '+c))}catch(_){toast('Code: '+c)}break}
     case 'joinsignin':joinToken=null;showSignIn(null,($('[data-form="join"]')||{dataset:{}}).dataset.email);break;
     case 'joinretry':if(joinToken)showJoin(joinToken);break;
