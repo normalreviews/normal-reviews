@@ -176,7 +176,7 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .ltier{display:flex;align-items:center;gap:8px;margin:10px 0 2px}
 .ltier .fine{margin:0}
 .lgrp{list-style:none;margin:0;padding:0}
-.litem{display:grid;grid-template-columns:auto 22px minmax(0,1fr);gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);background:var(--bg)}
+.litem{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);background:var(--bg)}
 .litem.ro{grid-template-columns:22px minmax(0,1fr)}
 .litem.dragging{position:relative;z-index:2;box-shadow:0 6px 18px rgb(0 0 0 / .18);border-radius:10px}
 .lhandle{appearance:none;border:0;background:var(--surface-2);touch-action:none;cursor:grab;color:var(--ink);width:52px;height:56px;border-radius:12px;display:grid;place-items:center;padding:0}
@@ -1359,7 +1359,7 @@ function renderMyList(){
       const note=items.length<2?'':mine?(ordered?'Your order counts':'Drag to order · not ordered yet'):(ordered?`${esc(name)}’s order`:'Not ordered yet');
       const canMove=mine&&!q&&items.length>1;
       part+=`<div class="ltier">${tierHTML(t)}<span class="fine">${items.length} place${items.length===1?'':'s'}${note?' · '+note:''}</span></div><ol class="lgrp" data-g="${esc(g)}">`+vis.map((x,i)=>{const m=meta(x.r.key);
-        return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}">${canMove?`<button class="lhandle" aria-label="Move ${esc(m.name)}: drag, or use the up and down arrow keys">${GRIP}</button>`:''}<span class="lpos">${items.indexOf(x)+1}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}</span><span class="rsub">${esc(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.hood+' · '+m.cuisine)} · ${ago(x.r.ts).toLowerCase()}</span></button></li>`}).join('')+'</ol>';
+        return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}"><span class="lpos">${items.indexOf(x)+1}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}</span><span class="rsub">${esc(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.hood+' · '+m.cuisine)} · ${ago(x.r.ts).toLowerCase()}</span></button>${canMove?`<button class="lhandle" aria-label="Move ${esc(m.name)}: drag, or use the up and down arrow keys">${GRIP}</button>`:''}</li>`}).join('')+'</ol>';
     }
     if(part)html+=`<li class="lcat"><h3>${esc(cat)}</h3>${part}</li>`;
   }
