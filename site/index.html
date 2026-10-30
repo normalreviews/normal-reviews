@@ -130,6 +130,9 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .nameask input:focus{outline:none;border-color:var(--accent)}
 .nameask.done{opacity:.6}
 .nnbtn{display:inline-block;margin-top:6px;padding:7px 11px;border-radius:9px;border:0;background:var(--accent-soft);color:var(--accent);font:650 13.5px var(--f-body);cursor:pointer}
+.vdlog{list-style:none;margin:8px 0 0;padding:0;font:13px/1.45 var(--f-body);color:var(--muted)}
+.vdlog li{padding:3px 0;border-bottom:1px solid var(--line)}
+.vdlog b{font:600 12.5px var(--f-mono);color:var(--ink);margin-right:6px}
 .needchip{flex:none;font:700 10px/1 var(--f-body);text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;border-radius:5px;background:var(--surface-2);color:var(--muted)}
 .namer input{flex:1;min-width:0;font:600 15px var(--f-body);padding:9px 10px;border-radius:10px;border:1.5px solid var(--accent);background:var(--surface);color:var(--ink)}
 .stamp{position:absolute;z-index:2;padding:6px 12px;border:3px solid var(--c);color:var(--c);border-radius:10px;font:800 22px/1 var(--f-display);text-transform:uppercase;letter-spacing:.03em;background:var(--surface);opacity:0;pointer-events:none;white-space:nowrap}
@@ -605,8 +608,9 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div class="panel" id="gpsPanel" hidden>
         <h2 class="h2">Automatic visit detection</h2>
         <p class="status" id="gpsStatus"></p>
-        <div class="btns"><button class="btn" id="gpsBtn" data-cmd="gps">Turn on</button></div>
-        <p class="fine">When you stay somewhere 10+ minutes, your phone checks it against the restaurant map. Restaurant visits become cards; every other stop is forgotten right away. When 5 visits are waiting, you get a reminder (at most once a day). No location history is kept on the phone or sent anywhere. Android shows a small notification while this is on. It uses some battery; turn it off anytime.</p>
+        <div class="btns"><button class="btn" id="gpsBtn" data-cmd="gps">Turn on</button><button class="btn" id="gpsFix" data-cmd="gpsperms" hidden>Fix permissions</button><button class="btn" id="gpsBatt" data-cmd="gpsbatt" hidden>Battery settings</button></div>
+        <ul class="vdlog" id="vdLog" hidden></ul>
+        <p class="fine" id="gpsAbout">When you stay somewhere 10+ minutes, your phone checks it against the restaurant map. Restaurant visits become cards; every other stop is forgotten right away. When 5 visits are waiting, you get a reminder (at most once a day). No location history is kept on the phone or sent anywhere.</p>
       </div>
 
       <div class="panel">
@@ -1924,6 +1928,44 @@ function fixSearch(){
    against the restaurant map right here, and only restaurant visits are kept. Everything else, and every raw location,
    is forgotten: the only thing remembered between fixes is the spot you're in right now. */
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+/* Newer Android app: on-phone visit detector (motion sensor + a precise check when you stop + a fence for leaving).
+   Older app installs keep the old always-on tracker below. */
+const VD=NATIVE&&Capacitor.isPluginAvailable&&Capacitor.isPluginAvailable('VisitDetector')?Capacitor.registerPlugin('VisitDetector'):null;
+let VDS=null;
+async function vdRefresh(){if(!VD)return;try{VDS=await VD.status()}catch(e){VDS=null}renderGps()}
+const vdMissing=()=>VDS&&VDS.perms?['location','background','activity'].filter(k=>!VDS.perms[k]):[];
+/* pick up visits the phone found while the app was closed */
+async function vdCollect(){
+  if(!VD||!GPS.on)return;
+  let r=null;try{r=await VD.takeVisits()}catch(e){return}
+  const vs=(r&&r.visits)||[];
+  for(const v of vs)await gpsClose({lat:v.lat,lng:v.lng,t0:v.start,t1:v.end},v.end);
+  try{await VD.setDeck({n:deckVisits().length})}catch(e){}
+  vdRefresh();
+}
+function vdExplain(){
+  acctOpen(`<h2 class="h2">Turn on visit detection</h2>
+    <p class="fine">Your phone notices when you stop somewhere, checks the spot against the restaurant map, and forgets it unless it’s a restaurant. Nothing about where you go leaves your phone.</p>
+    <p class="fine">Android will ask three things:</p>
+    <ol class="fine vdsteps"><li><b>Location</b>: choose <b>While using the app</b>, then on the next screen <b>Allow all the time</b>, and keep <b>Use precise location</b> on.</li>
+    <li><b>Physical activity</b>: Allow. It tells sitting from moving, using almost no battery.</li>
+    <li><b>Notifications</b>: Allow, for the “visits to rate” reminder.</li></ol>
+    <div class="btns"><button class="btn primary" data-cmd="vdgo">Continue</button><button class="btn" data-cmd="closeacct">Not now</button></div>`);
+}
+async function vdAskAll(){
+  closeAcct();
+  const ask=async w=>{try{return (await VD.ask({which:w})).granted}catch(e){return false}};
+  if(!await ask('location')){toast('Visit detection needs location. You can allow it in Fix permissions.');await vdRefresh();return false}
+  if(!await ask('background'))toast('Choose “Allow all the time” so stops are noticed while the app is closed.');
+  await ask('activity');
+  await ask('notifications');
+  await vdRefresh();
+  return vdMissing().length===0;
+}
+async function vdStart(){
+  try{await VD.start({base:location.origin,minDwell:state.params.minDwell})}catch(e){toast('Couldn’t start visit detection: '+(e&&e.message||e));return false}
+  GPS.on=true;gpsSave(GPS);await vdRefresh();return true;
+}
 const GLS='normal-reviews.gps';
 let BG=null,gpsWatch=null;
 function gpsLoad(){try{return JSON.parse(localStorage.getItem(GLS))||{}}catch(e){return {}}}
@@ -1987,7 +2029,7 @@ async function gpsClose(c,leftAt){
 }
 /* "5 visits waiting" nudge (Android app): once when the deck reaches 5, then at most once a day while it stays there */
 async function nudgeCheck(){
-  if(!NATIVE)return;
+  if(!NATIVE||VD)return;
   const n=deckVisits().length;
   if(n<5){if(GPS.nudged){GPS.nudged=0;gpsSave(GPS)}return}
   if(GPS.nudged&&Date.now()-GPS.nudged<20*3600e3)return;
@@ -2005,16 +2047,38 @@ function renderGps(){
   const on=!!GPS.on,t=x=>new Date(x).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
   $('#gpsBtn').textContent=on?'Turn off':'Turn on';
   $('#gpsBtn').classList.toggle('primary',!on);
+  if(VD){
+    const miss=vdMissing(),names={location:'precise location',background:'“Allow all the time” location',activity:'physical activity'};
+    $('#gpsFix').hidden=!(on&&miss.length);$('#gpsBatt').hidden=!on;
+    const lg=(VDS&&VDS.log||[]).slice(-12).reverse(),tm=x=>new Date(x).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'});
+    $('#vdLog').hidden=!(on&&lg.length);
+    $('#vdLog').innerHTML=lg.map(e=>`<li><b>${esc(tm(e.t))}</b>${esc(e.m)}</li>`).join('');
+    $('#gpsStatus').innerHTML=!on?'Off. Turn it on and your phone notices restaurant visits on its own, no Timeline export needed. It uses very little battery: it only checks your location when you stop and when you leave.'
+      :miss.length?`<b>Needs permission:</b> ${esc(miss.map(k=>names[k]).join(', '))}. Tap Fix permissions, then Permissions.`
+      :`<b>On.</b> ${GPS.found||0} restaurant visit${GPS.found===1?'':'s'} found${GPS.lastFound?`, latest ${esc(t(GPS.lastFound))}`:''}.${VDS&&VDS.phase==='here'?' You’re at a restaurant now.':''} If visits get missed, tap Battery settings and set battery use to Unrestricted. Recent checks (times only, no places):`;
+    return;
+  }
   $('#gpsStatus').innerHTML=on
     ?`<b>On.</b> ${GPS.found||0} restaurant visit${GPS.found===1?'':'s'} found${GPS.lastFound?`, latest ${esc(t(GPS.lastFound))}`:''}. ${GPS.skipped||0} other stops ignored and forgotten.${GPS.lastFix?` Last location check ${esc(t(GPS.lastFix))}.`:' Waiting for the first location.'}`
     :'Off. Turn it on and your phone notices restaurant visits on its own, no Timeline export needed.';
 }
 async function gpsToggle(){
+  if(VD){
+    if(GPS.on){try{await VD.stop()}catch(e){}GPS={on:false};gpsSave(GPS);VDS=null;renderGps();toast('Visit detection is off. Nothing about where you went is kept.');return}
+    vdExplain();return;
+  }
   if(GPS.on){await gpsStop();if(GPS.cur)delete GPS.cur;GPS.on=false;gpsSave(GPS);renderGps();toast('Visit detection is off. Nothing about where you went is kept.');return}
   const ok=await gpsStart(true);
   if(ok){GPS.on=true;gpsSave(GPS);renderGps();askNotify();toast('Visit detection is on. Eat somewhere for 10+ minutes and it shows up here.')}
 }
-if(NATIVE&&GPS.on){gpsStart(false);setTimeout(nudgeCheck,3000)}
+if(NATIVE&&GPS.on&&!VD){gpsStart(false);setTimeout(nudgeCheck,3000)}
+if(VD&&GPS.on){
+  /* the new app on a phone that had the old tracker on: switch over (asks for the new permissions if needed) */
+  vdRefresh().then(async()=>{if(vdMissing().length)return;await vdStart();vdCollect()});
+}else if(VD)vdRefresh();
+document.addEventListener('visibilitychange',async()=>{if(document.hidden||!VD)return;const had=vdMissing().length;await vdRefresh();
+  if(GPS.on&&had&&!vdMissing().length){await vdStart();toast('Permissions fixed. Visit detection is running.')}
+  vdCollect()});
 
 /* ---------- add a visit by hand (places the Timeline missed) ----------
    Hand-added visits aren't verified, so they're capped at 1 for every 10 visits your Timeline or phone found (last 90 days). */
@@ -2148,6 +2212,7 @@ async function importFiles(files){
   }
   const P=state.params, cut=NOW-Math.max(P.window,P.queueDays)*DAY;
   let short=0,homework=0,old=0,away=0,off=0,notfood=0,named=0,enriched=false,newest=0,future=0;const keep=new Map();const hideKeys=new Set(),foodKeys=new Set();
+  const ratedIds=new Set(state.myReviews.map(r=>r.visitId)),dropGps=new Set();
   const hr=t=>{const d=new Date(t);return d.getHours()+d.getMinutes()/60};
   const meal=x=>(x>=7&&x<10.5)||(x>=11&&x<15)||(x>=17&&x<22.5);
   for(const v of raw){
@@ -2168,10 +2233,14 @@ async function importFiles(files){
       foodKeys.add(key);
       if(food!==true&&!covered(v.lat,v.lng)&&state.mealOnly&&!meal(hr(v.start))&&!meal(hr((v.start+v.end)/2))&&!meal(hr(v.end))){off++;continue}
     }
-    if(state.visits.some(x=>x.source==='gps'&&x.start<v.end&&x.end>v.start))continue;
+    /* the phone found this visit too: if you already rated it, your rating stands; if not, Google's Timeline wins */
+    const gv=state.visits.filter(x=>x.source==='gps'&&x.start<v.end&&x.end>v.start);
+    if(gv.some(x=>ratedIds.has(x.id)))continue;
+    gv.forEach(x=>dropGps.add(x.id));
     const dk=key+'|'+new Date(v.start).toDateString(), prev=keep.get(dk);
     if(!prev||(v.end-v.start)>(prev.end-prev.start))keep.set(dk,{...v,key});
   }
+  if(dropGps.size){state.visits=state.visits.filter(x=>!dropGps.has(x.id));state.dismissed=state.dismissed.filter(id=>!dropGps.has(id))}
   if(raw.length){
     state.visits=state.visits.filter(v=>v.source!=='sample');
     state.myReviews=state.myReviews.filter(r=>!r.sample);
@@ -2670,6 +2739,9 @@ document.addEventListener('click',e=>{
     case 'copyinvite':{const l=t.dataset.link;try{navigator.clipboard.writeText(l).then(()=>toast('Invite link copied'),()=>toast(l))}catch(_){toast(l)}break}
     case 'linksignin':showSignIn('link',($('#email')||{}).value);break;
     case 'gps':gpsToggle();break;
+    case 'vdgo':vdAskAll().then(ok=>vdStart().then(on=>{if(on){renderGps();toast(ok?'Visit detection is on. Eat somewhere for 10+ minutes and it shows up here.':'Visit detection is on, but some permissions are missing. See Settings.')}}));break;
+    case 'gpsperms':VD&&VD.openSettings();break;
+    case 'gpsbatt':VD&&VD.openSettings();break;
     case 'addvisit':openAdd();break;
     case 'avclose':closeMenu();break;
     case 'avnear':avNear(t);break;
