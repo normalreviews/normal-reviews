@@ -155,15 +155,13 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .cele{position:fixed;inset:0;z-index:300;pointer-events:none;animation:scrim 1.5s ease-out forwards}
 @keyframes scrim{0%{background:rgb(255 255 255 / 0)}12%{background:rgb(255 255 255 / .72)}70%{background:rgb(255 255 255 / .72)}100%{background:rgb(255 255 255 / 0)}}
 .cele svg,.cele canvas{position:absolute;inset:0}
-.cele .cv{fill:none;stroke:var(--t4);stroke-width:4;stroke-linecap:round;stroke-dasharray:3000;stroke-dashoffset:3000;animation:cvdraw .3s ease-out forwards,cvfade .35s 1.1s forwards}
-.cele .star{fill:#F5B400;stroke:#fff;stroke-width:1.5;transform:translate(var(--x),var(--y)) scale(.4);opacity:0;animation:starfly .35s .25s cubic-bezier(.3,.6,.4,1) forwards,starpop .2s .6s ease-in forwards}
+.cele .cv{fill:none;stroke:var(--t4);stroke-width:4;stroke-linecap:round;animation:cvfade .3s 1.15s forwards}
+.cele .star{fill:#F5B400;stroke:#fff;stroke-width:1.5}
 @keyframes starpop{0%{opacity:1}100%{opacity:0}}
 .celetxt{position:absolute;left:0;right:0;top:51%;text-align:center;font:800 34px/1 var(--f-display);color:var(--t4);letter-spacing:-.02em;opacity:0;animation:celetxt 1.3s .15s ease-out forwards;text-shadow:0 2px 0 #fff,0 0 18px rgb(255 255 255 / .9)}
 @keyframes cvdraw{to{stroke-dashoffset:0}}
 /* phones set to remove animations: everything simply shows for 1.5 s, then goes away */
 .cele.calm{background:rgb(255 255 255 / .72)}
-.cele.calm .cv{stroke-dashoffset:0}
-.cele.calm .star{opacity:1;transform:translate(calc(var(--x) + var(--dx)),calc(var(--y) + var(--dy))) scale(2.2)}
 .cele.calm .celetxt{opacity:1}
 @keyframes cvfade{to{opacity:0}}
 @keyframes starfly{0%{opacity:1;transform:translate(var(--x),var(--y)) scale(.5) rotate(0)}100%{opacity:1;transform:translate(calc(var(--x) + var(--dx)),calc(var(--y) + var(--dy))) scale(2.2) rotate(216deg)}}
@@ -1265,21 +1263,41 @@ function celebrate(){
   try{celebrate2()}catch(e){toast('Extraordinary! (animation error: '+(e&&e.message||e)+')')}
 }
 function celebrate2(){
-  const W=innerWidth,H=innerHeight,o=document.createElement('div');
-  o.className='cele'+(reduceMotion?' calm':'');o.setAttribute('aria-hidden','true');
+  const W=innerWidth,H=innerHeight,o=document.createElement('div'),calm=reduceMotion;
+  o.className='cele'+(calm?' calm':'');o.setAttribute('aria-hidden','true');
   const y0=H*.46,x0=W*.08,x1=W*.92,top=H*.24,pts=[];
-  for(let i=0;i<=60;i++){const t=i/60,x=x0+(x1-x0)*t,z=(t-.5)*6;pts.push([x,y0-(y0-top)*Math.exp(-z*z/2)])}
+  for(let i=0;i<=80;i++){const t=i/80,x=x0+(x1-x0)*t,z=(t-.5)*6;pts.push([x,y0-(y0-top)*Math.exp(-z*z/2)])}
   const d='M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L');
-  o.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><path class="cv" d="${d}"/><g class="star" style="--x:${x1}px;--y:${y0}px;--dx:${-W*.06}px;--dy:${-H*.3}px"><path d="M0 -15l4.4 9.1 10 1.4-7.3 7 1.8 10L0 17.8l-8.9 4.7 1.8-10-7.3-7 10-1.4z"/></g></svg><canvas width="${W}" height="${H}"></canvas><div class="celetxt">Extraordinary!</div>`;
+  /* distance along the curve, so the star rides it at an even pace */
+  const acc=[0];for(let i=1;i<pts.length;i++)acc.push(acc[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  const L=acc[acc.length-1];
+  const at=f=>{const s=f*L;let i=1;while(i<acc.length-1&&acc[i]<s)i++;const u=(s-acc[i-1])/((acc[i]-acc[i-1])||1),a=pts[i-1],b=pts[i];
+    return [a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u,Math.atan2(b[1]-a[1],b[0]-a[0])]};
+  o.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><path class="cv" d="${d}" stroke-dasharray="${L.toFixed(1)}" stroke-dashoffset="${calm?0:L.toFixed(1)}"/><g class="star" transform="${calm?`translate(${x1-W*.06} ${y0-H*.3}) scale(2.2)`:`translate(${x0} ${y0}) scale(.9)`}"><path d="M0 -15l4.4 9.1 10 1.4-7.3 7 1.8 10L0 17.8l-8.9 4.7 1.8-10-7.3-7 10-1.4z"/></g></svg><canvas width="${W}" height="${H}"></canvas><div class="celetxt">Extraordinary!</div>`;
   document.body.appendChild(o);
-  const cv=o.querySelector('canvas'),c=cv.getContext('2d'),cols=['#6440D4','#F5B400','#2B44C4','#1B8455','#E8508A','#FF8A3D'];
-  const bx=x1-W*.06,by=y0-H*.3,parts=[];
-  if(!reduceMotion)setTimeout(()=>{for(let i=0;i<80;i++){const a=Math.random()*Math.PI*2,v=4+Math.random()*9;parts.push({x:bx,y:by,vx:Math.cos(a)*v-3,vy:Math.sin(a)*v-4,s:4+Math.random()*5,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[i%cols.length],t:0})}},600);
+  const cvp=o.querySelector('.cv'),star=o.querySelector('.star'),cv=o.querySelector('canvas'),c=cv.getContext('2d'),cols=['#6440D4','#F5B400','#2B44C4','#1B8455','#E8508A','#FF8A3D'];
+  const parts=[];let burst=false;
+  const RIDE=650,FLY=330,ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
   const t0=performance.now();
   (function frame(now){
+    const t=now-t0;
+    if(!calm){
+      if(t<RIDE){                                    /* the star rides the curve as it draws */
+        const f=ease(t/RIDE),[x,y,a]=at(f);
+        cvp.setAttribute('stroke-dashoffset',(L*(1-f)).toFixed(1));
+        star.setAttribute('transform',`translate(${x.toFixed(1)} ${(y-12).toFixed(1)}) rotate(${(a*180/Math.PI+f*360).toFixed(0)}) scale(${(.9+f*.3).toFixed(2)})`);
+      }else if(t<RIDE+FLY){                          /* ...then shoots off to the right */
+        cvp.setAttribute('stroke-dashoffset','0');
+        const u=(t-RIDE)/FLY,x=x1+u*u*(W*.45)+u*20,y=y0-12-u*H*.07;
+        star.setAttribute('transform',`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(360+u*300).toFixed(0)}) scale(${(1.2+u*1.2).toFixed(2)})`);
+        if(!burst&&u>.45){burst=true;
+          for(let i=0;i<80;i++){const a=Math.PI*(.65+Math.random()*.9),v=5+Math.random()*9;   /* sprays back from the right edge */
+            parts.push({x:Math.min(x,W-6),y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-3,s:4+Math.random()*5,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[i%cols.length],t:0})}}
+      }else star.setAttribute('opacity','0');
+    }
     c.clearRect(0,0,W,H);
-    for(const p of parts){p.vy+=.38;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.t++;c.save();c.globalAlpha=Math.max(0,1-p.t/52);c.translate(p.x,p.y);c.rotate(p.r);c.fillStyle=p.c;c.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);c.restore()}
-    if(now-t0<1500)requestAnimationFrame(frame);else o.remove();
+    for(const p of parts){p.vy+=.38;p.vx*=.98;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.t++;c.save();c.globalAlpha=Math.max(0,1-p.t/42);c.translate(p.x,p.y);c.rotate(p.r);c.fillStyle=p.c;c.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);c.restore()}
+    if(t<1500)requestAnimationFrame(frame);else o.remove();
   })(t0);
 }
 function rate(v,tier,reasons){
