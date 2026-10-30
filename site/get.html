@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Join Normal Reviews</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#f3f4f1;--surface:#fff;--ink:#16181f;--muted:#5d6170;--line:#dcdeda;--accent:#2f45c8;--accent-ink:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#121318;--surface:#1c1e25;--ink:#eceef3;--muted:#a3a7b4;--line:#2c2f38;--accent:#8796ff;--accent-ink:#0d1030}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{width:100%;max-width:420px;display:flex;flex-direction:column;gap:14px}
+h1{font-size:26px;line-height:1.15;margin:0}
+p{margin:0}
+.fine{color:var(--muted);font-size:14.5px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.code{font:800 44px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}
+.btn{appearance:none;display:block;width:100%;text-align:center;text-decoration:none;border:0;border-radius:14px;padding:15px 18px;font:650 17px system-ui,sans-serif;cursor:pointer}
+.primary{background:var(--accent);color:var(--accent-ink)}
+.plain{background:none;color:var(--accent);padding:8px}
+ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+</style>
+</head>
+<body>
+<main id="m" hidden>
+  <h1>You’re invited to Normal Reviews</h1>
+  <div class="card">
+    <p class="fine">Your invite code</p>
+    <p class="code" id="code"></p>
+    <p class="fine" id="for"></p>
+  </div>
+  <button class="btn primary" id="get">Copy code and get the app</button>
+  <ol class="fine">
+    <li>Tap the button. Your code is copied and the app downloads.</li>
+    <li>Open the download and install it. If Android asks, allow installs from your browser.</li>
+    <li>Open Normal Reviews, tap <b>Got an invite code? Join</b>, paste the code and pick a 4-digit PIN.</li>
+  </ol>
+  <a class="btn plain" id="web" href="./">Use it in the browser instead</a>
+</main>
+<script>
+(function(){
+  'use strict';
+  /* the invite link: Android phones get the app, everyone else goes straight to the web app's join screen */
+  var h=location.hash.match(/c=(\d{6})/),e=location.hash.match(/e=([^&]*)/),code=h?h[1]:'',email='';
+  try{email=e?decodeURIComponent(e[1]):''}catch(_){}
+  var web='./'+(code?'#join='+code+(email?'&e='+encodeURIComponent(email):''):'');
+  var android=/Android/i.test(navigator.userAgent);
+  if(!android){location.replace(web);return}
+  var dev=/^dev\./.test(location.hostname);
+  var apk=dev?'https://github.com/normalreviews/normal-reviews/releases/download/android-dev/normal-reviews-dev.apk'
+             :'https://github.com/normalreviews/normal-reviews/releases/download/android-latest/normal-reviews.apk';
+  document.getElementById('code').textContent=code||'—';
+  document.getElementById('for').textContent=email?'Works once, for '+email+'.':'';
+  document.getElementById('web').href=web;
+  document.getElementById('get').onclick=function(){
+    var go=function(){location.href=apk};
+    try{navigator.clipboard.writeText(code).then(go,go)}catch(_){go()}
+  };
+  if(!code){document.getElementById('get').textContent='Get the app'}
+  document.getElementById('m').hidden=false;
+})();
+</script>
+</body>
+</html>
