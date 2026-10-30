@@ -1911,8 +1911,8 @@ function applyFix(k,p){
   resync(k);
 }
 /* the match report: what each place in your last import or re-check became, and where the name came from */
-function buildReport(keys,R){
-  const rows=[],deckKeys=new Set(deckVisits().map(v=>v.key)),rated=new Set(state.myReviews.map(r=>r.visitId)),dis=new Set(state.dismissed),cut=NOW-state.params.queueDays*DAY;
+/* one place's line in the match report, from what the phone knows right now */
+function reportRow(k,deckKeys,rated,dis,cut){
   const noCard=k=>{
     if(deckKeys.has(k))return '';
     const vs=state.visits.filter(v=>v.key===k);if(!vs.length)return 'no visit kept';
@@ -1921,24 +1921,30 @@ function buildReport(keys,R){
     if(rec.every(v=>rated.has(v.id)||dis.has(v.id)))return 'you said you didn’t visit';
     return 'same day as another card';
   };
-  for(const k of keys){
-    const tp=state.tplaces[k];if(!tp)continue;const m=meta(k);
-    let st,src;
-    if(state.hidden.includes(k)){st='skip';src=tp.skipWhy||'Marked not food'}
-    else if(tp.cands&&tp.cands.length&&!m.named){st='ask';src='Asking “Were you at…”'}
-    else if(state.names[k]){st='named';src='Named by you'}
-    else if(tp.src==='link'){st='named';src='Shared link'}
-    else if(tp.src==='google'&&tp.needName){st='google';src='Google (not on our map yet)'}
-    else if(tp.src==='google'){st='named';src='Google'}
-    else if(tp.name){st='named';src='Our map'}
-    else{st='none';src='No match'}
-    rows.push({k,n:m.name,st,src,why:st==='skip'?'':noCard(k)});
-  }
-  const order={none:0,ask:1,google:2,named:3,skip:4};rows.sort((a,b)=>order[a.st]-order[b.st]);
+  const tp=state.tplaces[k];if(!tp)return null;const m=meta(k);
+  let st,src;
+  if(state.hidden.includes(k)){st='skip';src=tp.skipWhy||'Marked not food'}
+  else if(tp.cands&&tp.cands.length&&!m.named){st='ask';src='Asking “Were you at…”'}
+  else if(state.names[k]){st='named';src='Named by you'}
+  else if(tp.src==='link'){st='named';src='Shared link'}
+  else if(tp.src==='google'&&tp.needName&&COMM.get(k)){st='named';src='Named by another tester'}
+  else if(tp.src==='google'&&tp.needName){st='google';src='Google (not on our map yet)'}
+  else if(tp.src==='google'){st='named';src='Google'}
+  else if(tp.name){st='named';src='Our map'}
+  else{st='none';src='No match'}
+  return {k,n:m.name,st,src,why:st==='skip'?'':noCard(k)};
+}
+const reportCtx=()=>({deckKeys:new Set(deckVisits().map(v=>v.key)),rated:new Set(state.myReviews.map(r=>r.visitId)),dis:new Set(state.dismissed),cut:NOW-state.params.queueDays*DAY});
+const RORDER={none:0,ask:1,google:2,named:3,skip:4};
+function buildReport(keys,R){
+  const rows=[],deckKeys=new Set(deckVisits().map(v=>v.key)),rated=new Set(state.myReviews.map(r=>r.visitId)),dis=new Set(state.dismissed),cut=NOW-state.params.queueDays*DAY;
+  for(const k of keys){const r=reportRow(k,deckKeys,rated,dis,cut);if(r)rows.push(r)}
+  rows.sort((a,b)=>RORDER[a.st]-RORDER[b.st]);
   state.report={at:Date.now(),google:R.google,linked:R.linked,cached:R.cached,noAnswer:R.noAnswer,left:gLeft(),key:!!GKEY,rows:rows.slice(0,300)};
 }
 function renderReport(){
-  const box=$('#reportPanel');if(!box)return;const r=state.report;box.hidden=!r;if(!r)return;
+  const box=$('#reportPanel');if(!box)return;const r0=state.report;box.hidden=!r0;if(!r0)return;
+  const cx=reportCtx(),r={...r0,rows:r0.rows.map(x=>reportRow(x.k,cx.deckKeys,cx.rated,cx.dis,cx.cut)||x).sort((a,b)=>RORDER[a.st]-RORDER[b.st])};
   const c=s=>r.rows.filter(x=>x.st===s).length;
   const cards=r.rows.filter(x=>x.st!=='skip'&&!x.why).length;
   $('#reportSum').innerHTML=`<b>${r.rows.length}</b> places: ${c('named')} named, ${c('google')} named by Google only, ${c('ask')} asking you, ${c('none')} unmatched, ${c('skip')} skipped. <b>${cards}</b> have cards to rate.<br>`+
