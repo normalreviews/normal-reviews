@@ -703,6 +703,15 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 const isFinite=v=>typeof v==='number'&&Number.isFinite(v);
 const DAY=864e5, NOW=Date.now();
 const COMM=new Map();
+/* names with profanity or slurs are never saved or shared (the database checks the same list) */
+const LEET={'0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','9':'g','@':'a','$':'s','!':'i','|':'i'};
+const BAD_WORD=/\b(fuck\w*|fvck\w*|fuk|fuks|fukk\w*|fck|fcking|phuck|phucking|phucker\w*|motherfuck\w*|shit|shits|shitty|shithead\w*|shithole\w*|shithouse\w*|shitter\w*|bullshit|bitch|bitches|bitchass|cunt\w*|asshole\w*|dickhead\w*|pussy|pussies|cocksuck\w*|twat\w*|wank\w*|whore\w*|slut\w*|bastard\w*|piss|pissed|nigg\w*|fag|fags|faggot\w*|retard\w*|spic|spics|chink\w*|kike\w*|gook\w*|wetback\w*|tranny|trannies|dyke\w*|porn\w*|rape|rapist\w*|nazi\w*|hitler|kkk|penis\w*|vagina\w*|dildo\w*|jizz\w*|cum|cumshot\w*|blowjob\w*|handjob\w*)\b/;
+function badName(s){
+  let t=String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[0134579@$!|]/g,c=>LEET[c]).replace(/\*/g,'').replace(/[^a-z]+/g,' ').trim();
+  t=t.replace(/\b(?:[a-z] ){2,}[a-z]\b/g,m=>m.replace(/ /g,''));
+  return BAD_WORD.test(t)||BAD_WORD.test(t.replace(/(.)\1{2,}/g,'$1'));
+}
+const BADMSG='That name can’t be shared. Please use the restaurant’s real name.';
 const OWNN=new Map();   /* the names on your own shared ratings: what you named (or confirmed) a place as, even after a reinstall */   /* names testers typed for places the open map doesn't have, from everyone's shared ratings */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1385,6 +1394,7 @@ document.addEventListener('submit',e=>{
   e.preventDefault();
   const inp=f.querySelector('input'),v=inp.value.trim().slice(0,60),k=f.dataset.key;
   if(!v){inp.focus();return}
+  if(badName(v)){toast(BADMSG);inp.focus();return}
   state.names[k]=v;const tp=state.tplaces[k];if(tp)tp.needName=false;
   save();resync(k);refresh();
   f.classList.add('done');f.innerHTML=`<p class="fine">✓ Saved <b>${esc(v)}</b>. Everyone will see it.</p>`;
@@ -1402,6 +1412,7 @@ document.addEventListener('submit',e=>{
   const f=e.target.closest('.namer');if(!f)return;
   e.preventDefault();
   const v=f.querySelector('input').value.trim(),k=localKey(f.dataset.key),tp=state.tplaces[k];
+  if(v&&badName(v)){toast(BADMSG);return}
   if(v)state.names[k]=v;else delete state.names[k];
   if(tp&&!k.startsWith('p:')){tp.ref=null;tp.refV=0;if(!v)tp.osmV=0;
     loadTilesFor([tp]).then(()=>{matchPlaces([k]);save();refresh();resync(k)})}
@@ -2742,9 +2753,10 @@ async function pullShared(force){
     friendsList=ids.map(id=>({id,name:((profs.find(p=>p.id===id)||{}).display_name)||'Friend'}));
     const since=dayStr(NOW-Math.max(state.params.window,state.params.queueDays,90)*DAY);
     const {data:rows,error}=await sb.rpc('global_ratings',{since});if(error)throw error;
+    let names=null;try{const r2=await sb.rpc('place_names',{since});if(!r2.error)names=r2.data||[]}catch(e){}
     const legacy=(rows||[]).filter(r=>r.place_key&&!r.place_key.startsWith('p:')&&isFinite(r.place_lat)).map(r=>({lat:r.place_lat,lng:r.place_lng}));
     if(legacy.length){await loadManifest();const ids=[...new Set(legacy.filter(p=>covered(p.lat,p.lng)).flatMap(p=>tilesAround(p.lat,p.lng)))].slice(0,8);await Promise.all(ids.map(loadTile))}
-    buildShared(rows||[]);
+    buildShared(rows||[],names);
     save();refresh();
     signPhotos(rows||[]);
   }catch(err){console.warn(err);toast('Couldn’t load shared ratings: '+friendly(err))}
@@ -2756,12 +2768,16 @@ function canonRemote(r){
   if(r.place_name&&isFinite(r.place_lat)&&tilesReady(r.place_lat,r.place_lng)){const f=findRef({lat:r.place_lat,lng:r.place_lng},r.place_name);if(f)return f}
   return k;
 }
-function buildShared(rows){
+function buildShared(rows,names){
   const users=friendsList.map(f=>({id:f.id,name:f.name,hue:hash(f.id)%360,bias:0}));
   const reviews=[],ustats={};remotePlaces={};
-  const votes=new Map();for(const r of rows)if(r.place_key&&r.place_name){const v=votes.get(r.place_key)||{};v[r.place_name]=(v[r.place_name]||0)+1;votes.set(r.place_key,v)}
-  COMM.clear();for(const [k,v] of votes)COMM.set(k,Object.entries(v).sort((a,b)=>b[1]-a[1])[0][0]);
-  OWNN.clear();for(const r of rows.slice().sort((a,b)=>String(a.visit_day).localeCompare(String(b.visit_day))))if(me&&r.who===me.id&&r.place_key&&r.place_name)OWNN.set(r.place_key,r.place_name);
+  COMM.clear();
+  if(names&&names.length){for(const n of names)if(n.place_key&&n.name&&!badName(n.name))COMM.set(n.place_key,n.name)}
+  else{   /* the database doesn't have place_names yet: count here, one vote per rating */
+    const votes=new Map();for(const r of rows)if(r.place_key&&r.place_name&&!badName(r.place_name)){const v=votes.get(r.place_key)||{};v[r.place_name]=(v[r.place_name]||0)+1;votes.set(r.place_key,v)}
+    for(const [k,v] of votes)COMM.set(k,Object.entries(v).sort((a,b)=>b[1]-a[1])[0][0]);
+  }
+  OWNN.clear();for(const r of rows.slice().sort((a,b)=>String(a.visit_day).localeCompare(String(b.visit_day))))if(me&&r.who===me.id&&r.place_key&&r.place_name&&!badName(r.place_name))OWNN.set(r.place_key,r.place_name);
   for(const r of rows){
     if(r.place_key&&!remotePlaces[r.place_key])remotePlaces[r.place_key]={name:COMM.get(r.place_key)||null,label:r.place_label||null,lat:r.place_lat,lng:r.place_lng};
     const ck=canonRemote(r);if(ck!==r.place_key&&!remotePlaces[ck])remotePlaces[ck]=remotePlaces[r.place_key];
@@ -2804,7 +2820,7 @@ async function pushRating(r){
     const tp=state.tplaces[r.key]||remotePlaces[r.key]||{},m=meta(r.key),rd=x=>isFinite(x)?Math.round(x*1e4)/1e4:null;
     const pk=canon(r.key);
     const row={user_id:me.id,visit_id:r.visitId,place_key:pk,
-      place_name:m.named?m.name.slice(0,120):null,
+      place_name:m.named&&!badName(m.name)?m.name.slice(0,120):null,
       place_label:(m.cuisine&&m.cuisine!=='Timeline stop')?String(m.cuisine).slice(0,80):null,
       place_lat:rd(tp.lat),place_lng:rd(tp.lng),visit_day:dayStr(r.ts),tier:r.tier,
       reasons:r.reasons||null,comment:r.comment?r.comment.slice(0,140):null,photo_path:r.photoPath||null};
