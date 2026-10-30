@@ -643,6 +643,8 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <script>
 (function(){
 'use strict';
+/* a missing location comes back from the database as null, and the built-in isFinite(null) says true; only real numbers count here */
+const isFinite=v=>typeof v==='number'&&Number.isFinite(v);
 const DAY=864e5, NOW=Date.now();
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
