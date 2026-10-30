@@ -59,7 +59,7 @@ end $$;
 -- the app checks an email + code before showing "Join"
 create or replace function public.invite_check(p_email text, p_code text)
 returns json language plpgsql security definer set search_path = public as $$
-declare e text := lower(trim(p_email)); c text := regexp_replace(coalesce(p_code, ''), '\D', '', 'g');
+declare e text := lower(trim(p_email)); c text := coalesce(trim(p_code), 'none');   -- the app sends digits only
         i public.invites; who text; mx integer; n integer;
 begin
   delete from public.invite_tries where at < now() - interval '1 day';
