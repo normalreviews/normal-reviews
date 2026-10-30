@@ -1133,39 +1133,51 @@ function renderDeck(){
 function dirOf(dx,dy){if(Math.hypot(dx,dy)<24)return null;return Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down')}
 function showDir(el,d,dist){el.querySelectorAll('.stamp').forEach(s=>s.style.opacity=s.dataset.dir===d?Math.min(1,dist/95):0);if(d)el.dataset.dir=d;else delete el.dataset.dir}
 function snap(el){el.style.transition=reduceMotion?'none':'transform .28s cubic-bezier(.2,.9,.3,1.25)';el.style.transform='';showDir(el,null,0)}
+/* Swiping: a card can be grabbed anywhere, buttons included. A press that doesn't move is still a tap on that button;
+   once the finger moves 10 px it becomes a drag (and the button's tap is cancelled). A quick flick counts even if short.
+   Holding still on the card (not on a button) for half a second opens the menu. */
 function bindDrag(el,v){
-  let sx=0,sy=0,dx=0,dy=0,on=false,pid=null,lp=0;
-  const stopHold=()=>{clearTimeout(lp);el.classList.remove('holding')};
+  let sx=0,sy=0,dx=0,dy=0,down=false,on=false,pid=null,lp=0,hp=0,dragged=false,trail=[];
+  const stopHold=()=>{clearTimeout(lp);clearTimeout(hp);el.classList.remove('holding')};
   el.addEventListener('contextmenu',e=>e.preventDefault());
+  const grab=()=>{on=true;try{el.setPointerCapture(pid)}catch(_){}};
   el.addEventListener('pointerdown',e=>{
-    if(e.button>0||e.target.closest('button,a,input,form,[data-nodrag]'))return;
-    on=true;pid=e.pointerId;sx=e.clientX;sy=e.clientY;dx=dy=0;
-    try{el.setPointerCapture(pid)}catch(_){}
+    if(e.button>0||e.target.closest('input,textarea,select,.namer'))return;     /* typing a name: no swiping */
+    down=true;on=false;dragged=false;pid=e.pointerId;sx=e.clientX;sy=e.clientY;dx=dy=0;trail=[[performance.now(),0,0]];
     el.style.transition='none';
-    clearTimeout(lp);
-    el.classList.add('holding');
+    clearTimeout(lp);clearTimeout(hp);
+    if(e.target.closest('button,a,[data-nodrag]'))return;                       /* on a button: wait and see if it's a tap or a drag */
+    grab();
+    hp=setTimeout(()=>{if(on&&Math.hypot(dx,dy)<=8)el.classList.add('holding')},150);
     lp=setTimeout(()=>{
       if(!on||Math.hypot(dx,dy)>8)return;
-      on=false;stopHold();snap(el);
+      on=false;down=false;stopHold();snap(el);
       try{navigator.vibrate&&navigator.vibrate(12)}catch(_){}
       openMenu(v.id);
     },480);
   });
   el.addEventListener('pointermove',e=>{
-    if(!on||e.pointerId!==pid)return;
+    if(!down||e.pointerId!==pid)return;
     dx=e.clientX-sx;dy=e.clientY-sy;
-    if(Math.hypot(dx,dy)>8)stopHold();
+    const dist=Math.hypot(dx,dy);
+    if(!on){if(dist<10)return;grab()}
+    if(dist>8){stopHold();dragged=true}
+    const now=performance.now();trail.push([now,dx,dy]);while(trail.length>2&&now-trail[0][0]>90)trail.shift();
     el.style.transform=`translate(${dx}px,${dy}px) rotate(${dx/18}deg)`;
-    showDir(el,dirOf(dx,dy),Math.hypot(dx,dy));
+    showDir(el,dirOf(dx,dy),dist);
   });
   const end=e=>{
     stopHold();
-    if(!on||e.pointerId!==pid)return;on=false;
+    if(!down||e.pointerId!==pid)return;down=false;
+    if(!on)return;on=false;
     const d=dirOf(dx,dy),dist=Math.hypot(dx,dy);
-    if(d&&dist>95)commit(el,v,d);else snap(el);
+    const f=trail[0],dt=Math.max(1,performance.now()-f[0]),speed=Math.hypot(dx-f[1],dy-f[2])/dt;   /* px per ms over the last ~90 ms */
+    if(d&&(dist>95||(dist>40&&speed>.55)))commit(el,v,d);else snap(el);
   };
   el.addEventListener('pointerup',end);
-  el.addEventListener('pointercancel',()=>{stopHold();if(on){on=false;snap(el)}});
+  el.addEventListener('pointercancel',()=>{stopHold();down=false;if(on){on=false;snap(el)}});
+  /* a drag that started on a button must not also press it */
+  el.addEventListener('click',e=>{if(dragged){e.stopPropagation();e.preventDefault();dragged=false}},true);
 }
 
 /* ---------- card menu ---------- */
