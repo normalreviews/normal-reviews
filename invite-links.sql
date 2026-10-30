@@ -67,3 +67,16 @@ begin
   update public.invites set used_at = now(), used_by = new.id, email = coalesce(email, lower(new.email)) where upper(token) = t;
   return new;
 end $$;
+
+-- cancel one of your invites that hasn't been used: the code stops working right away
+create or replace function public.cancel_invite(p_token text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare n integer;
+begin
+  if auth.uid() is null then raise exception 'sign in first'; end if;
+  delete from public.invites where token = p_token and invited_by = auth.uid() and used_at is null;
+  get diagnostics n = row_count;
+  return n > 0;
+end $$;
+revoke all on function public.cancel_invite(text) from public, anon;
+grant execute on function public.cancel_invite(text) to authenticated;

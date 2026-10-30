@@ -246,6 +246,9 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .both .k{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .both .v{font:600 22px/1 var(--f-mono);font-variant-numeric:tabular-nums}
 .both .s{font-size:12px;color:var(--muted)}
+.ibtns{display:flex;gap:6px;flex:none}
+.people li.emptyrow{display:block}
+.follow.danger{border-color:var(--t0);color:var(--t0)}
 .follow{appearance:none;font:650 12.5px/1 var(--f-body);padding:8px 11px;border-radius:999px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;white-space:nowrap}
 .follow[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .follow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -2606,7 +2609,7 @@ async function renderInvites(){
     const now=Date.now(),d=t=>new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric'});
     const joined=i=>{const f=friendsList.find(x=>x.id===i.used_by);return 'Joined '+d(i.used_at)+(f?' · '+esc(f.name):'')};
     $('#inviteList').innerHTML=(inv||[]).map(i=>{const open=!i.used_at&&Date.parse(i.expires_at)>=now;
-      return `<li><span class="av anon" aria-hidden="true">${i.used_at?'✓':'@'}</span><div><div class="nm">${i.email?esc(i.email):'Code '+esc(fmtCode(i.token||''))}</div><div class="meta">${i.used_at?joined(i):!open?'Expired':`Waiting${i.email?' · code <b>'+esc(fmtCode(i.token||''))+'</b>':''} · works until ${d(i.expires_at)}`}</div></div>${open?`<button class="follow" data-cmd="copymsg" data-code="${esc(i.token)}">Copy</button>`:''}</li>`}).join('');
+      return `<li><span class="av anon" aria-hidden="true">${i.used_at?'✓':'@'}</span><div><div class="nm">${i.email?esc(i.email):'Code '+esc(fmtCode(i.token||''))}</div><div class="meta">${i.used_at?joined(i):!open?'Expired':`Waiting${i.email?' · code <b>'+esc(fmtCode(i.token||''))+'</b>':''} · works until ${d(i.expires_at)}`}</div></div>${!i.used_at?`<span class="ibtns">${open?`<button class="follow" data-cmd="copymsg" data-code="${esc(i.token)}">Copy</button>`:''}<button class="follow danger" data-cmd="cancelinvite" data-code="${esc(i.token)}">${open?'Cancel':'Remove'}</button></span>`:''}</li>`}).join('');
   }catch(e){console.warn('invites',e)}
 }
 const fmtCode=c=>/^[A-Z0-9]{8}$/.test(c)?c.slice(0,4)+'-'+c.slice(4):c;
@@ -2618,7 +2621,14 @@ function inviteMessage(code){
 function showInvite(code){
   const msg=inviteMessage(code),link=inviteLink(code),canShare=!!navigator.share;
   $('#inviteResult').innerHTML=`<div class="invbox"><p class="fine">New invite. Invite code:</p><p class="pinbig">${esc(fmtCode(code))}</p><p class="invlink">${esc(link)}</p>
-    <div class="btns">${canShare?`<button class="btn primary" data-cmd="shareinvite" data-code="${esc(code)}">Share</button>`:''}<button class="btn${canShare?'':' primary'}" data-cmd="copymsg" data-code="${esc(code)}">Copy message</button><button class="btn" data-cmd="copyinvite" data-link="${esc(link)}">Copy link</button></div></div>`;
+    <div class="btns">${canShare?`<button class="btn primary" data-cmd="shareinvite" data-code="${esc(code)}">Share</button>`:''}<button class="btn${canShare?'':' primary'}" data-cmd="copymsg" data-code="${esc(code)}">Copy message</button><button class="btn" data-cmd="copyinvite" data-link="${esc(link)}">Copy link</button><button class="btn danger" data-cmd="cancelinvite" data-code="${esc(code)}">Cancel invite</button></div></div>`;
+}
+async function cancelInvite(code){
+  const {data,error}=await sb.rpc('cancel_invite',{p_token:code});
+  if(error){toast(friendly(error));return}
+  const box=$('#inviteResult');if(box&&box.querySelector(`[data-code="${CSS.escape(code)}"]`))box.innerHTML='';
+  toast(data?'Invite cancelled. That code no longer works.':'That invite was already used or cancelled.');
+  renderInvites();
 }
 async function createInvite(btn){
   btn.disabled=true;
@@ -2929,6 +2939,9 @@ document.addEventListener('click',e=>{
       t.dataset.armed=Date.now();t.textContent='Tap again to delete';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete my rating'}},4000);break}
     case 'needname':askNames(needNameList());break;
     case 'joincode':showJoinCode(($('#email')||{}).value||'','');break;
+    case 'cancelinvite':{
+      if(t.dataset.armed&&Date.now()-+t.dataset.armed<4000){cancelInvite(t.dataset.code);break}
+      const was=t.textContent;t.dataset.armed=Date.now();t.textContent='Tap again';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent=was}},4000);break}
     case 'copymsg':copyText(inviteMessage(t.dataset.code),'Invite message copied. Paste it in a text or email.');break;
     case 'shareinvite':{const c=t.dataset.code;navigator.share({title:'Join me on Normal Reviews',text:inviteMessage(c)}).catch(()=>{});break}
     case 'copycode2':{const c=t.dataset.code;try{navigator.clipboard.writeText(c).then(()=>toast('Invite code copied'),()=>toast('Code: '+c))}catch(_){toast('Code: '+c)}break}
