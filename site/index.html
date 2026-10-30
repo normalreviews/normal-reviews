@@ -168,28 +168,40 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .hist .lab{fill:var(--ink);font:600 10px var(--f-mono)}
 .listhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .rows{list-style:none;margin:0;padding:0}
-.finder{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
-.finder .frow{display:flex;gap:10px;flex-wrap:wrap}
-.finder label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--muted);flex:1 1 140px;min-width:0}
-.finder select,.finder input{font:600 15px var(--f-body);padding:9px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-width:0;width:100%}
-.finder select:focus,.finder input:focus{outline:none;border-color:var(--accent)}
-.finder .fine{margin:0}
-.row{appearance:none;width:100%;display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 2px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
+.seg.wide{display:flex}.seg.wide button{flex:1;padding:9px 8px;font-size:14px}
+.fbar{display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;position:relative;display:inline-flex;align-items:center;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;color:var(--ink)}
+.chip select{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:650 14px var(--f-body);color:inherit;padding:8px 28px 8px 13px;border-radius:999px;cursor:pointer;max-width:220px}
+.chip::after{content:"";position:absolute;right:12px;top:50%;width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-70%) rotate(45deg);pointer-events:none;opacity:.55}
+.chip.set{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.chip:focus-within{border-color:var(--accent)}
+.ichip{appearance:none;padding:8px 11px;cursor:pointer}.ichip::after{display:none}.ichip svg{width:18px;height:18px}
+.ichip[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+.frow2{display:flex;gap:8px}
+.frow2 input{flex:1 1 60%;min-width:0;font:600 15px var(--f-body);padding:9px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.frow2 input#fZip{flex:0 0 32%}
+.frow2 input:focus{outline:none;border-color:var(--accent)}
+.count{margin:2px 0 -4px;font-size:13px;font-weight:600;color:var(--muted)}
+.fbar.listmode ~ .count{font-weight:400;font-size:13.5px}
+.lede.small{font-size:14px;margin:-6px 0 0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.fbar.listmode .ndl,.fbar:not(.listmode) .lmo{display:none}
+.row{appearance:none;width:100%;display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 2px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
 .rank{font:500 13px var(--f-mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
 .rmain{min-width:0;display:flex;flex-direction:column;gap:2px}
-.rname{display:flex;gap:6px;align-items:center;min-width:0;font-weight:650}
+.rname{display:flex;gap:7px;align-items:center;min-width:0;font-weight:650;font-size:16px}
 .rname .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rsub{font-size:12.5px;color:var(--muted)}
 .trend{font-weight:700}.trend.up{color:var(--t3)}.trend.down{color:var(--t1)}
 .dist{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:5px;background:var(--surface-2);max-width:190px}
 .dist i{display:block;height:100%;background:var(--c)}
-.score{font:600 17px/1 var(--f-mono);font-variant-numeric:tabular-nums;padding:6px 8px;border-radius:8px;white-space:nowrap}
-.score.hi{background:var(--accent);color:var(--accent-ink)}
-.score.mid{color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
-.score.lo{color:var(--muted)}
+.score{font:800 19px/1 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:-.01em;padding:7px 10px 6px;border-radius:10px;white-space:nowrap;background:var(--sc,var(--accent));color:#fff;min-width:58px;text-align:center}
+.ytier{flex:none;display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--c);color:#fff;font:800 11px/1 var(--f-body)}
+.ytier svg{width:12px;height:12px}
 .youchip{flex:none;font:700 10px/1 var(--f-body);text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;border-radius:5px;background:var(--accent-soft);color:var(--accent)}
 .emptyrow{padding:18px 4px;color:var(--muted)}
-.finder.listmode .ndl,.finder:not(.listmode) .lmo{display:none}
 .lcat{padding:14px 0 4px}
 .lcat h3{margin:0 0 6px;font:700 17px/1.2 var(--f-head,var(--f-body))}
 .ltier{display:flex;align-items:center;gap:8px;margin:10px 0 2px}
@@ -213,7 +225,7 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .modes button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .modes button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .rs{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.alt{font:500 11px/1 var(--f-mono);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.alt{font:600 11.5px/1 var(--f-body);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .both{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .both div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .both div.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
@@ -334,6 +346,18 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .dhead > div{min-width:0}
 .dhead h2{font:750 28px/1.05 var(--f-display);letter-spacing:-.03em;margin:4px 0 0;overflow-wrap:anywhere}
 .xbtn{appearance:none;border:1px solid var(--line);background:var(--surface);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer;flex:none}
+.dplate{position:relative;height:120px;border-radius:16px;overflow:hidden;background:hsl(var(--h) 32% 31%);color:#fff}
+.dplate .art{position:absolute;right:6%;bottom:-6%;height:115%;width:auto;filter:drop-shadow(0 8px 12px rgb(0 0 0 / .28));transform:rotate(-4deg)}
+.dplate .pchip{top:14px}
+.dbig{display:flex;align-items:center;gap:14px}
+.dbig .score{font-size:40px;padding:12px 16px 10px;border-radius:16px;min-width:0}
+.dbig p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.45}
+.dbig b{color:var(--ink);font-size:16px}
+.dbig .other{display:block;margin-top:3px}
+.myrate{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.myrate .mrtop{display:flex;align-items:center;gap:8px;font-weight:650}
+.myrate .cmt{margin:0}
+.myrate img{width:100%;max-height:220px;object-fit:cover;border-radius:10px}
 .dscore{display:flex;align-items:center;gap:14px}
 .dscore .score{font-size:30px;padding:10px 12px;border-radius:12px}
 .dscore p{margin:0;font-size:13.5px;color:var(--muted)}
@@ -487,31 +511,27 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
           <button data-mode="global" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5z"/></svg>Global</button>
         </div>
       </div>
-      <p class="lede" id="rankLede"></p>
-      <div class="finder" id="finder">
-        <div class="frow">
-          <label for="fWho" class="lmo">Whose list<select id="fWho"></select></label>
-          <label for="fCat">Food type<select id="fCat"></select></label>
-          <label for="fDist" class="ndl">Distance<select id="fDist"><option value="1">Within 1 mi</option><option value="3">Within 3 mi</option><option value="10">Within 10 mi</option><option value="25">Within 25 mi</option><option value="0">Anywhere</option></select></label>
-        </div>
-        <div class="frow ndl">
-          <label for="fZip">ZIP code<input id="fZip" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="Blank = where I am"></label>
-          <label for="fSort">Sort<select id="fSort"><option value="best">Best score</option><option value="near">Closest</option></select></label>
-        </div>
-        <input id="fName" type="search" autocomplete="off" placeholder="Search by name" aria-label="Search by name">
-        <p class="fine" id="fNote"></p>
+      <p class="lede small" id="rankLede"></p>
+      <div class="seg wide" role="group" aria-label="Which places">
+        <button data-filter="all" aria-pressed="true">Everyone</button>
+        <button data-filter="mine" aria-pressed="false">Rated by me</button>
+        <button data-filter="list" aria-pressed="false">My list</button>
       </div>
-      <div>
-        <div class="listhead">
-          <h2 class="h2">Places</h2>
-          <div class="seg" role="group" aria-label="Filter">
-            <button data-filter="all" aria-pressed="true">Everyone</button>
-            <button data-filter="mine" aria-pressed="false">Rated by me</button>
-            <button data-filter="list" aria-pressed="false">My list</button>
-          </div>
+      <div class="fbar" id="finder">
+        <div class="chips">
+          <label class="chip lmo"><span class="sr">Whose list</span><select id="fWho"></select></label>
+          <label class="chip"><span class="sr">Food type</span><select id="fCat"></select></label>
+          <label class="chip ndl"><span class="sr">Distance</span><select id="fDist"><option value="0">Anywhere</option><option value="1">Within 1 mi</option><option value="3">Within 3 mi</option><option value="10">Within 10 mi</option><option value="25">Within 25 mi</option></select></label>
+          <label class="chip ndl"><span class="sr">Sort</span><select id="fSort"><option value="best">Best first</option><option value="near">Closest first</option></select></label>
+          <button class="chip ichip" id="fMoreBtn" data-cmd="fmore" aria-expanded="false" aria-label="Search by name or ZIP code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
         </div>
-        <ul class="rows" id="rankList"></ul>
+        <div class="frow2" id="fMore" hidden>
+          <input id="fName" type="search" autocomplete="off" placeholder="Search by name" aria-label="Search by name">
+          <input id="fZip" class="ndl" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="ZIP code" aria-label="ZIP code (blank = where I am)">
+        </div>
       </div>
+      <p class="count" id="fNote"></p>
+      <ul class="rows" id="rankList"></ul>
       <div class="panel hist">
         <div class="listhead"><h2 class="h2">The curve</h2><span class="fine">bars = places · line = target bell curve</span></div>
         <div id="hist"></div>
@@ -747,7 +767,7 @@ function sampleVisits(){
   const S=[['r:kura',2,19,30,75],['r:birria',4,13,10,45],['r:nonna',6,20,0,95],['g:sample-1',8,18,40,60],['r:pho',11,12,15,50],['r:copper',15,19,0,80],['r:ramen',18,12,30,40],['r:saffron',23,19,15,70],['r:ondo',27,20,0,105]];
   return S.map(([key,d,h,mi,dur])=>{const t=new Date(NOW-d*DAY);t.setHours(h,mi,0,0);const start=t.getTime();return {id:key+'@'+start,key,start,end:start+dur*6e4,source:'sample'}});
 }
-function fresh(){return {v:1,seed:7,params:{...DEFAULTS},visits:[],tplaces:{},myReviews:[],tokens:1,sinceToken:0,hidden:[],names:{},undo:[],importInfo:null,mode:'global',friends:[],drafts:{},skipped:{},dismissed:[],mapFilter:'all',demo:false,mealOnly:true,allow:[],bayOnly:true,find:{cat:'all',dist:3,from:'me',zip:'',sort:'best',name:'',who:'me'},order:{}}}
+function fresh(){return {v:1,seed:7,params:{...DEFAULTS},visits:[],tplaces:{},myReviews:[],tokens:1,sinceToken:0,hidden:[],names:{},undo:[],importInfo:null,mode:'global',friends:[],drafts:{},skipped:{},dismissed:[],mapFilter:'all',demo:false,mealOnly:true,allow:[],bayOnly:true,find:{cat:'all',dist:0,from:'me',zip:'',sort:'best',name:'',who:'me'},order:{}}}
 function load(){try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.v===1)return s}catch(e){}return null}
 function save(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
 /* ---------- moving from the old Netlify address ----------
@@ -780,7 +800,8 @@ if(MOVE_TO){
   setTimeout(go,1200);
 }
 let state=load()||fresh();
-if(!state.find)state.find={cat:'all',dist:3,from:'me',zip:'',sort:'best',name:''};
+if(!state.find)state.find={cat:'all',dist:0,from:'me',zip:'',sort:'best',name:''};
+if(!state.findV2){state.find.dist=0;state.findV2=true}   /* Rankings now lists every rated place unless you pick a distance */
 const base=fresh();
 for(const k of Object.keys(base)) if(state[k]===undefined) state[k]=base[k];
 state.params={...DEFAULTS};
@@ -874,6 +895,16 @@ function compute(only){
 }
 function avg(a){return a.reduce((x,y)=>x+y,0)/a.length}
 function scoreCls(s){return s>=3.5?'hi':s>=3?'mid':'lo'}
+/* color by score: below normal is warm, normal is blue, great is green, the very best purple */
+/* color by score, in clear bands: below normal warm, normal blue, great green, the very best purple */
+function scoreColor(v){
+  if(!isFinite(v)||v<2.5)return '#9B958A';
+  return v<3?'#C47C2C':v<3.4?'#2C7FA3':v<3.8?'#1B8455':'#6440D4';
+}
+const scoreHTML=(v,cls)=>`<span class="score${cls?' '+cls:''}" style="--sc:${scoreColor(v)}">${v.toFixed(2)}</span>`;
+const TICON={0:'!',1:'–',2:'✓',3:'♥',4:'★'};
+const ytier=t=>`<span class="ytier" style="--c:var(--t${t})" title="You: ${TIERS[t].label}" aria-label="You: ${TIERS[t].label}">${TICON[t]}</span>`;
+const shortType=l=>String(l||'').replace(/\s+restaurant$/i,'').replace(/^Restaurant$/,'Restaurant');
 
 /* ---------- formatting ---------- */
 function ago(ts){const d=Math.floor((NOW-ts)/DAY);return d<=0?'Today':d===1?'Yesterday':d+' days ago'}
@@ -1339,10 +1370,13 @@ function renderFinder(L){
   const f=state.find,cats={};
   for(const p of L){const c=catOf(meta(p.key));cats[c]=(cats[c]||0)+1}
   const names=CATS.map(c=>c[0]).sort((a,b)=>a.localeCompare(b)).concat(['Everything else']);
-  const opts=[['all',`All food types (${L.length})`]].concat(names.map(c=>[c,`${c} (${cats[c]||0})`]));
+  const opts=[['all',`All food · ${L.length}`]].concat(names.map(c=>[c,`${c} · ${cats[c]||0}`]));
   $('#fCat').innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}"${v===f.cat?' selected':''}>${esc(l)}</option>`).join('');
   $('#fDist').value=String(f.dist);$('#fSort').value=f.sort;
   if(document.activeElement!==$('#fZip'))$('#fZip').value=f.zip||'';
+  fitChips();
+  $('#fCat').parentNode.classList.toggle('set',f.cat!=='all');$('#fDist').parentNode.classList.toggle('set',!!f.dist);$('#fSort').parentNode.classList.toggle('set',f.sort==='near');
+  if((f.name||f.zip)&&$('#fMore').hidden){$('#fMore').hidden=false;$('#fMoreBtn').setAttribute('aria-expanded','true')}
 }
 /* ---------- My list: your places by food type and rating, in the order you drag them ----------
    Inside one food type + rating (say Pizza, Great), top of the list counts up to +0.4 of a tier and bottom up to −0.4,
@@ -1419,7 +1453,7 @@ function renderMyList(){
       const note=items.length<2?'':mine?(ordered?'Your order counts':'Drag to order · not ordered yet'):(ordered?`${esc(name)}’s order`:'Not ordered yet');
       const canMove=mine&&!q&&items.length>1;
       part+=`<div class="ltier">${tierHTML(t)}<span class="fine">${items.length} place${items.length===1?'':'s'}${note?' · '+note:''}</span></div><ol class="lgrp" data-g="${esc(g)}">`+vis.map((x,i)=>{const m=meta(x.r.key);
-        return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}"><span class="lpos">${items.indexOf(x)+1}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}</span><span class="rsub">${mine&&needsName(x.r.key)?'<span class="needchip">Needs a name</span> ':''}${esc(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.hood+' · '+m.cuisine)} · ${ago(x.r.ts).toLowerCase()}</span></button>${canMove?`<button class="lhandle" aria-label="Move ${esc(m.name)}: drag, or use the up and down arrow keys">${GRIP}</button>`:''}</li>`}).join('')+'</ol>';
+        return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}"><span class="lpos">${items.indexOf(x)+1}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}</span><span class="rsub">${mine&&needsName(x.r.key)?'<span class="needchip">Needs a name</span> ':''}${esc(shortType(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.cuisine))} · ${ago(x.r.ts).toLowerCase()}</span></button>${canMove?`<button class="lhandle" aria-label="Move ${esc(m.name)}: drag, or use the up and down arrow keys">${GRIP}</button>`:''}</li>`}).join('')+'</ol>';
     }
     if(part)html+=`<li class="lcat"><h3>${esc(cat)}</h3>${part}</li>`;
   }
@@ -1444,36 +1478,47 @@ function endDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=nul
 document.addEventListener('keydown',e=>{const h=e.target.closest&&e.target.closest('.lhandle');if(!h||(e.key!=='ArrowUp'&&e.key!=='ArrowDown'))return;e.preventDefault();
   const li=h.closest('.litem'),ol=h.closest('.lgrp');moveItem(ol.dataset.g,li.dataset.k,e.key==='ArrowUp'?-1:1)});
 document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
+let chipCtx=null;
+function fitChips(){
+  try{chipCtx=chipCtx||document.createElement('canvas').getContext('2d');
+    document.querySelectorAll('.chip select').forEach(el=>{const o=el.options[el.selectedIndex];if(!o)return;
+      chipCtx.font=getComputedStyle(el).font||'650 14px sans-serif';el.style.width=Math.ceil(chipCtx.measureText(o.text).width+44)+'px'})}catch(e){}
+}
 function rowHTML(p){
   const m=meta(p.key), o=(isF()?G:F).by.get(p.key);
-  const alt=o&&o.n?`${isF()?'Global':'Friends'} ${o.score.toFixed(2)}`:`${isF()?'Global':'Friends'} –`;
-  const dd=isFinite(p._d)?` · ${miles(p._d)<9.5?miles(p._d).toFixed(1):Math.round(miles(p._d))} mi`:'';
-  return `<li><button class="row" data-open="${esc(p.key)}"><span class="rank">${p.rank}</span><span class="rmain"><span class="rname"><span class="nm">${esc(m.name)}</span>${p.mine?`<span class="youchip">You: ${TIERS[p.mine.tier].label}</span>`:''}</span><span class="rsub">${esc(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.hood+' · '+m.cuisine)}${dd} · ${nPeople(p)} · ${p.n} rating${p.n===1?'':'s'}${p.problems?` · <span class="probtxt">${p.problems} problem${p.problems===1?'':'s'}</span>`:''}${trendHTML(p)}</span>${distHTML(p)}</span><span class="rs"><span class="score ${scoreCls(p.score)}">${p.score.toFixed(2)}</span><span class="alt">${alt}</span></span></button></li>`;
+  const alt=`${isF()?'Global':'Friends'} ${o&&o.n?o.score.toFixed(2):'–'}`;
+  const dd=isFinite(p._d)?(miles(p._d)<9.5?miles(p._d).toFixed(1):Math.round(miles(p._d)))+' mi':'';
+  const type=shortType(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:''):m.cuisine);
+  const bits=[type,dd,`${p.n} rating${p.n===1?'':'s'}`].filter(Boolean).map(esc);
+  if(p.problems)bits.push(`<span class="probtxt">${p.problems} problem${p.problems===1?'':'s'}</span>`);
+  return `<li><button class="row" data-open="${esc(p.key)}"><span class="rank">${p._i||p.rank}</span><span class="rmain"><span class="rname"><span class="nm">${esc(m.name)}</span>${p.mine?ytier(p.mine.tier):''}</span><span class="rsub">${bits.join(' · ')}${trendHTML(p)}</span></span><span class="rs">${scoreHTML(p.score)}<span class="alt">${alt}</span></span></button></li>`;
 }
 function renderRank(){
   const L=S.list, P=state.params, top=L.filter(p=>p.score>=3.5).length;
   document.querySelectorAll('.win').forEach(e=>e.textContent=P.window);
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===state.mode?'true':'false'));
   $('#rankLede').textContent=isF()
-    ?`Only you and the ${state.friends.length} people you follow. ${L.length} places from ${S.active} ratings, curved against each other, so a 3.00 means normal by your group’s standards.`
-    :state.demo?`Everyone on Normal Reviews, including the demo crowd. ${L.length} places from ${S.active} ratings. A 3.00 is a solid normal spot, and only ${top} clear 3.50.`
-    :`Your own places, curved against each other: a 3.00 is your normal, higher means better than your usual. ${L.length} places from ${S.active} ratings.`;
+    ?`You and the ${state.friends.length} people you follow. 3.00 is your group’s normal; higher is better.`
+    :`Everyone’s ratings. 3.00 is a normal spot; higher is better. ${S.active} rating${S.active===1?'':'s'} in the last ${P.window} days.`;
   if(!L.length){$('#hist').innerHTML='<p class="fine">The curve appears once you’ve rated a few places.</p>';$('#rankList').innerHTML=`<li class="emptyrow">Nothing rated in the last ${P.window} days yet. Import your Timeline and swipe a few visits on the Rate tab.</li>`;return}
   $('#hist').innerHTML=histSVG(L);
   $('#finder').classList.toggle('listmode',rankFilter==='list');
   document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===rankFilter?'true':'false'));
   if(rankFilter==='list')return renderMyList();
   renderFinder(L);
-  const f=state.find,c=f.dist?findCenter():{label:null};
+  const f=state.find,c=findCenter();
   let shown=rankFilter==='mine'?L.filter(p=>p.mine):L.slice();
   if(f.cat!=='all')shown=shown.filter(p=>catOf(meta(p.key))===f.cat);
   const q=(f.name||'').trim().toLowerCase();if(q)shown=shown.filter(p=>meta(p.key).name.toLowerCase().includes(q));
-  for(const p of shown){const m=meta(p.key);p._d=c&&isFinite(c.lat)&&isFinite(m.lat)?metersBetween(c,m):NaN}
+  const real=c&&isFinite(c.lat)&&(!c.fallback||f.dist);         /* distances on rows only from you or a ZIP */
+  for(const p of shown){const m=meta(p.key);p._d=real&&isFinite(m.lat)?metersBetween(c,m):NaN}
   if(f.dist&&c&&isFinite(c.lat))shown=shown.filter(p=>isFinite(p._d)&&miles(p._d)<=f.dist);
   else if(f.dist&&f.zip)shown=[];                 /* no usable ZIP yet: show nothing rather than everything */
   if(f.sort==='near')shown.sort((a,b)=>(isFinite(a._d)?a._d:1e12)-(isFinite(b._d)?b._d:1e12));
+  shown.forEach((p,i)=>p._i=i+1);
   $('#rankWhere').textContent=!f.dist?'Everywhere':c&&c.label?(c.label==='you'?'Near you':c.fallback?'Near your last visit':'Near '+c.label):f.zip?'By ZIP code':'Near you';
-  $('#fNote').textContent=!f.dist?`${shown.length} place${shown.length===1?'':'s'}, any distance.`:c&&c.why?c.why:`${shown.length} place${shown.length===1?'':'s'} within ${f.dist} mi of ${c.label}${c.fallback?' (location is off)':''}.`;
+  const np=`${shown.length} place${shown.length===1?'':'s'}`;
+  $('#fNote').textContent=!f.dist?np:c&&c.why?c.why:`${np} within ${f.dist} mi of ${c.label}${c.fallback?' (location is off)':''}`;
   $('#rankList').innerHTML=shown.length?shown.map(rowHTML).join(''):`<li class="emptyrow">${L.length?(f.dist&&f.zip&&c&&c.why?esc(c.why):'No rated places match. Try a wider distance or another food type.'):`Nothing rated in the last ${P.window} days yet.`}</li>`;
   document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===rankFilter?'true':'false'));
 }
@@ -1485,20 +1530,23 @@ function openDetail(key){
   const active=p&&p.n>0;
   const sign=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(2);
   const cv=cover(key);
-  let html=`<div class="grab"></div>${cv?`<img class="cover" src="${cv}" alt="Your photo of ${esc(m.name)}">`:''}<div class="dhead"><div><p class="eyebrow">${active?`#${p.rank} of ${L.length} · `:''}${esc(m.tl?m.sub:m.hood+' · '+m.cuisine)}</p><h2 class="cname">${esc(m.name)}</h2></div><button class="xbtn" data-cmd="close" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
+  const art=`<div class="dplate" style="--h:${m.hue}"><span class="pchip a">${esc(shortType(m.tl?(m.cuisine!=='Timeline stop'?m.cuisine:''):m.cuisine)||'Restaurant')}</span>${foodArt(m.cuisine+' '+m.name)}</div>`;
+  let html=`<div class="grab"></div>${cv?`<img class="cover" src="${cv}" alt="Your photo of ${esc(m.name)}">`:art}<div class="dhead"><div><p class="eyebrow">${esc(m.tl?m.sub:m.hood+' · '+m.cuisine)}</p><h2 class="cname">${esc(m.name)}</h2></div><button class="xbtn" data-cmd="close" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
   if(m.tl){const url=mapsUrl(m.tp);html+=`<div class="btns"><button class="btn" data-cmd="name" data-key="${esc(key)}">${m.named?'Rename':'Name it'}</button>${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open in Maps ↗</a>`:''}</div>`}
-  const box=(X,label,mode)=>{const q=X.by.get(ck);const ok=q&&q.n>0;return `<div class="${state.mode===mode?'on':''}"><span class="k">${label}</span><span class="v">${ok?q.score.toFixed(2):'–'}</span><span class="s">${ok?`#${q.rank} of ${X.list.length} · ${q.n} rating${q.n===1?'':'s'}`:'No recent ratings'}</span></div>`};
-  html+=`<div class="both">${box(F,'Friends','friends')}${box(G,'Global','global')}</div>`;
   if(active){
-    const pct=Math.max(1,Math.ceil(p.rank/L.length*100));
-    html+=`<div class="dscore"><span class="score ${scoreCls(p.score)}">${p.score.toFixed(2)}</span><p><b>${pct<=50?'Top '+pct+'%':'Bottom '+(101-pct)+'%'} ${isF()?'among friends':'in town'}</b><br>${nPeople(p)} · ${p.n} rating${p.n===1?'':'s'} in ${P.window} days${p.mine?` · you said <b>${TIERS[p.mine.tier].label}</b>`:''}</p></div>`;
+    const pct=Math.max(1,Math.ceil(p.rank/L.length*100)),o=(isF()?G:F).by.get(ck);
+    html+=`<div class="dbig">${scoreHTML(p.score)}<p><b>${pct<=50?'Top '+pct+'%':'Bottom '+(101-pct)+'%'} ${isF()?'among friends':'in town'}</b> · #${p.rank} of ${L.length}<br>${p.n} rating${p.n===1?'':'s'} in the last ${P.window} days<span class="other">${isF()?'Global':'Friends'}: ${o&&o.n?o.score.toFixed(2):'no ratings yet'}</span></p></div>`;
     if(m.note||Math.abs(p.trend)>=.6)html+=`<p class="fine">${Math.abs(p.trend)>=.6?(p.trend>0?'<span class="trend up">▲ Rising.</span> ':'<span class="trend down">▼ Falling.</span> ')+`Ratings from the last 30 days average ${sign(p.trend)} tier versus the 30 to ${P.window} days before.`:''}${m.note?' Simulated story: '+esc(m.note)+'.':''}</p>`;
     if(p.problems){const rs=Object.entries(p.rc).sort((a,b)=>b[1]-a[1]).map(([k,c])=>`${esc(k)}${c>1?' ×'+c:''}`).join(', ');
       html+=`<p class="probbox"><b>${p.problems} of ${p.n} visits</b> in the last ${P.window} days had a problem${rs?`: ${rs}`:''}.</p>`}
-    html+=`<div>${distHTML(p,true)}<div class="legend">${TLIST.filter(t=>p.cw[t]>0).map(t=>`<span class="t${t}"><i></i>${TIERS[t].label} ${(p.cw[t]/p.sw*100).toFixed(0)}%</span>`).join('')}</div></div>`;
   }else{
     html+=`<p class="fine">${isF()?`None of your friends rated this in the last ${P.window} days. Switch to Global to see everyone’s ratings.`:`No ratings from the last ${P.window} days, so this place has no score right now.`}</p>`;
   }
+  /* your own rating, right under the score */
+  const myR=state.myReviews.filter(r=>canon(r.key)===ck).sort((a,b)=>b.ts-a.ts)[0];
+  if(myR){const ph=(myR.photo&&PH.mem.get(myR.photo))||(myR.photoPath&&photoUrls[myR.photoPath]);
+    html+=`<div class="myrate"><div class="mrtop">${ytier(myR.tier)}<span>You said <b>${TIERS[myR.tier].label}</b> · ${ago(myR.ts).toLowerCase()}</span></div>${myR.tier===0&&myR.reasons?`<div class="rsn">${myR.reasons.map(esc).join(' · ')}</div>`:''}${myR.comment?`<p class="cmt">${esc(myR.comment)}</p>`:''}${ph&&ph!==cv?`<img src="${ph}" alt="Your photo">`:''}</div>`}
+  if(active)html+=`<div>${distHTML(p,true)}<div class="legend">${TLIST.filter(t=>p.cw[t]>0).map(t=>`<span class="t${t}"><i></i>${TIERS[t].label} ${(p.cw[t]/p.sw*100).toFixed(0)}%</span>`).join('')}</div></div>`;
   if(p&&p.all.length){
     const shown=p.all.slice(0,30);
     const fs=new Set(state.friends);
@@ -1557,7 +1605,7 @@ function mapFeatures(){
   const top=state.mapFilter==='top',feats=[];
   const add=(key,p,ghost)=>{const m=meta(key);if(!isFinite(m.lat)||!isFinite(m.lng))return;
     feats.push({type:'Feature',geometry:{type:'Point',coordinates:[m.lng,m.lat]},
-      properties:{key,name:m.name,ghost:ghost?1:0,score:p?p.score.toFixed(2):'',cls:p?scoreCls(p.score):'ghost',mine:p&&p.mine?1:0,prob:p&&p.problems?1:0,rank:p?p.score:0}})};
+      properties:{key,name:m.name,ghost:ghost?1:0,score:p?p.score.toFixed(2):'',cls:p?scoreCls(p.score):'ghost',col:p?scoreColor(p.score):'rgb(155,149,138)',mine:p&&p.mine?1:0,prob:p&&p.problems?1:0,rank:p?p.score:0}})};
   for(const p of S.list){if(top&&p.score<3.5)continue;add(p.key,p,false)}
   if(isF()&&!top)for(const p of G.list){if(F.by.has(p.key)&&F.by.get(p.key).n)continue;add(p.key,null,true)}
   return feats;
@@ -1598,9 +1646,9 @@ function paintMap(){
   const set=(l,k,v)=>{try{ML.setPaintProperty(l,k,v)}catch(_){}};
   set('clusters','circle-color',acc);set('clusters','circle-stroke-color',sur);set('cluster-count','text-color',ink);
   set('ghosts','circle-color',sur);set('ghosts','circle-stroke-color',mut);
-  set('pins','circle-color',['match',['get','cls'],'hi',acc,sur]);
-  set('pins','circle-stroke-color',['match',['get','cls'],'hi',sur,'mid',acc,mut]);
-  set('pin-score','text-color',['match',['get','cls'],'hi',ink,'mid',acc,mut]);
+  set('pins','circle-color',['get','col']);
+  set('pins','circle-stroke-color',sur);
+  set('pin-score','text-color','#ffffff');
   set('pin-mine','circle-color',t4);set('pin-mine','circle-stroke-color',sur);
   set('pin-prob','circle-color',t0);set('pin-prob','circle-stroke-color',sur);
   set('pin-name','text-color',fg);set('pin-name','text-halo-color','#ffffff');set('pin-name','text-halo-width',1.5);
@@ -2741,6 +2789,7 @@ document.addEventListener('click',e=>{
       loadTilesFor(tp?[tp]:[]).then(()=>{matchPlaces([k]);save();refresh()});save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
     case 'signin':showSignIn(null,($('#email')||{}).value);break;
     case 'closeacct':closeAcct();break;
+    case 'fmore':{const r=$('#fMore'),open=r.hidden;r.hidden=!open;t.setAttribute('aria-expanded',open?'true':'false');if(open)$('#fName').focus();break}
     case 'needname':askNames(needNameList());break;
     case 'joincode':showJoinCode(($('#email')||{}).value||'','');break;
     case 'copycode2':{const c=t.dataset.code;try{navigator.clipboard.writeText(c).then(()=>toast('Invite code copied'),()=>toast('Code: '+c))}catch(_){toast('Code: '+c)}break}
