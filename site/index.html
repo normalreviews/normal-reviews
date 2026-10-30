@@ -1,6 +1,15 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>
+/* test site only: show script errors on screen, so a phone screenshot tells us what broke */
+(function(){if(!/^dev\./.test(location.hostname))return;var n=0;
+function show(m){if(n++>5)return;var d=document.getElementById('errbox');if(!d){d=document.createElement('div');d.id='errbox';d.style.cssText='position:fixed;left:8px;right:8px;top:8px;z-index:9999;background:#b3261e;color:#fff;font:12px/1.4 monospace;padding:8px 10px;border-radius:8px;white-space:pre-wrap;max-height:45vh;overflow:auto';(document.body||document.documentElement).appendChild(d)}d.textContent+=(d.textContent?'\n':'')+m}
+addEventListener('error',function(e){show('Error: '+e.message+' (line '+(e.lineno||'?')+':'+(e.colno||'?')+')')});
+addEventListener('unhandledrejection',function(e){var r=e.reason;show('Promise: '+(r&&(r.message||r.errorMessage||r.code)||r))});
+window.__nrShow=show;})();
+</script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Normal Reviews</title>
@@ -1930,7 +1939,7 @@ function fixSearch(){
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 /* Newer Android app: on-phone visit detector (motion sensor + a precise check when you stop + a fence for leaving).
    Older app installs keep the old always-on tracker below. */
-const VD=NATIVE&&Capacitor.isPluginAvailable&&Capacitor.isPluginAvailable('VisitDetector')?Capacitor.registerPlugin('VisitDetector'):null;
+let VD=null;try{VD=NATIVE&&Capacitor.isPluginAvailable&&Capacitor.isPluginAvailable('VisitDetector')?Capacitor.registerPlugin('VisitDetector'):null}catch(e){VD=null;window.__nrShow&&__nrShow('VisitDetector: '+e.message)}
 let VDS=null;
 async function vdRefresh(){if(!VD)return;try{VDS=await VD.status()}catch(e){VDS=null}renderGps()}
 const vdMissing=()=>VDS&&VDS.perms?['location','background','activity'].filter(k=>!VDS.perms[k]):[];
@@ -2294,7 +2303,7 @@ function go(t){
 /* after a swipe: rebuild scores, rankings, map and settings once swiping pauses, leaving the deck alone */
 let rfT=0;
 function refreshLater(){clearTimeout(rfT);rfT=setTimeout(()=>{if(normalizeOrders()){save();soonSync()}renderGps();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderRank();renderFriends();renderLogic();renderMap()},600)}
-function refresh(){clearTimeout(rfT);if(normalizeOrders()){save();soonSync()}renderGps();renderAcct();renderReport();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
+function refresh(){clearTimeout(rfT);if(normalizeOrders()){save();soonSync()}try{renderGps()}catch(e){console.warn(e);window.__nrShow&&__nrShow('renderGps: '+e.message)}renderAcct();renderReport();G=compute();F=compute(new Set(state.friends));S=isF()?F:G;renderHeader();renderDeck();renderRank();renderFriends();renderLogic();renderMap()}
 
 /* ---------- shared backend (Supabase): used only when config.js has your project's keys ---------- */
 const CFG=window.NR_CONFIG||{};
