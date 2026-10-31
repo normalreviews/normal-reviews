@@ -1102,7 +1102,7 @@ function cardHTML(v){
     extra+=`<div class="alts" data-nodrag><span class="fine">Wrong place?</span><button class="lnk" data-cmd="fixsearch" data-key="${k}">Search</button>${googleNamed(v.key)?'':`<button class="lnk" data-cmd="name" data-key="${k}">${m.named?'Rename':'Name it'}</button>`}<button class="lnk warn" data-cmd="hide" data-key="${k}">Not food</button>${url?`<a class="lnk" href="${esc(url)}" target="_blank" rel="noopener">Map ↗</a>`:''}</div>`;
   }
   const dr=state.drafts[v.id]||{}, dphoto=dr.photo&&PH.mem.get(dr.photo), photo=dphoto||cover(v.key);
-  const cam=`<button class="cbtn" data-cmd="mphoto2" data-visit="${esc(v.id)}" aria-label="${dphoto?'Change photo':'Add a photo'}">${ICON.cam}${dphoto?'<span>Photo added</span>':''}</button>`;
+  const cam=`<button class="cbtn" data-cmd="cphoto" data-visit="${esc(v.id)}" aria-label="${dphoto?'Change photo':'Add a photo'}">${ICON.cam}${dphoto?'<span>Photo added</span>':''}</button>`;
   extra+=(openCmt===v.id||dr.comment)
     ?`<div class="ccmt" data-nodrag><textarea class="ccmtbox" data-visit="${esc(v.id)}" maxlength="140" rows="2" placeholder="What stood out? Shown with your rating.">${esc(dr.comment||'')}</textarea><div class="ccrow"><span class="fine ccount">${(dr.comment||'').length}/140</span>${cam}</div></div>`
     :`<div class="ccrow" data-nodrag><button class="lnk addc" data-cmd="ccomment" data-visit="${esc(v.id)}">+ Add a comment</button>${cam}</div>`;
@@ -3031,7 +3031,7 @@ document.addEventListener('click',e=>{
       t.dataset.armed=Date.now();t.textContent='Tap again to delete';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete my rating'}},4000);break}
     case 'needname':askNames(needNameList());break;
     case 'ccomment':{openCmt=t.dataset.visit;renderDeck();const b=document.querySelector(`.ccmtbox[data-visit="${CSS.escape(openCmt)}"]`);if(b)b.focus();break}
-    case 'mphoto2':pendingPhoto=t.dataset.visit;openPicker($('#photoFile'));break;
+    case 'cphoto':pendingPhoto=t.dataset.visit;openPicker($('#photoFile'));break;
     case 'joincode':showJoinCode(($('#email')||{}).value||'','');break;
     case 'signinpin':showSignIn(null,($('#email')||$('#jemail')||{}).value||J.email);break;
     case 'forgotpin':showSignIn('forgot',($('#email')||{}).value);break;
