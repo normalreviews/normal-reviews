@@ -442,7 +442,8 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .stepno{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0}
 .bigchoice{display:flex;flex-direction:column;gap:10px;margin:6px 0}
 .bigchoice .btn{padding:16px 18px;font-size:16.5px;justify-content:center}
-.coderow{display:flex;gap:8px}.coderow input{flex:1}
+.coderow{display:flex;gap:8px}
+.acctf input.codebig{font:800 28px/1 var(--f-display);letter-spacing:.25em;text-align:center;padding:14px 10px}.coderow input{flex:1}
 .pinbig{font:800 44px/1 var(--f-display,system-ui);letter-spacing:.18em;margin:2px 0 4px}
 .acctf input[readonly]{color:var(--muted)}
 .invbox{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding:12px;border-radius:12px;background:var(--surface-2)}
@@ -2483,7 +2484,7 @@ let fromEmailLink=AUTH_IN_URL&&/access_token=/.test(location.hash);
 const dayStr=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const friendly=err=>{const m=(err&&err.message)||String(err);
   if(/rate limit|security purposes|too many/i.test(m))return 'Too many sign-in emails were sent. Wait a few minutes and try again.';
-  if(/(token|otp).*(expired|invalid)|(expired|invalid).*(token|otp)/i.test(m))return 'That code didn’t work. Check it, or ask for a new one.';
+  if(/(token|otp).*(expired|invalid)|(expired|invalid).*(token|otp)/i.test(m))return 'That code didn’t work. Check it, or tap Send a new code.';
   if(/failed to fetch|network/i.test(m))return 'No connection. Check your internet and try again.';
   if(/invalid login credentials/i.test(m))return 'That email and PIN don’t match. Check them, or tap Forgot PIN?';
   if(/pin length/i.test(m))return 'Your PIN is 4 digits.';
@@ -2602,10 +2603,21 @@ function showSignIn(step,email){
       <button class="lnk" data-cmd="signin">Back to PIN sign-in</button>`);
     return;
   }
+  if(step==='forgotcode'){
+    acctOpen(`<h2 class="h2">Check your email</h2>
+      <p class="fine">We sent a code to <b>${esc(email)}</b>. It can take a minute, so check spam too. Type it here, then you’ll pick a new PIN.</p>
+      <form class="acctf col" data-form="code" data-email="${esc(email)}">
+        <input id="otp" class="codebig" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code" aria-label="Code from the email" required>
+        <div class="btns"><button class="btn primary">Continue</button></div>
+      </form>
+      <p class="fine">If the email has a link instead of a code, tap the link: it opens your browser, where you can pick a new PIN. Then sign in here with it.</p>
+      <div class="lnks"><button class="lnk" data-cmd="forgotpin">Send a new code</button><button class="lnk" data-cmd="signinpin">Back to sign in</button></div>`);
+    return;
+  }
   if(step==='forgot'){
     acctOpen(`<h2 class="h2">Forgot your PIN?</h2>
-      <p class="fine">We’ll email you a sign-in link. After you sign in, you’ll pick a new PIN.</p>
-      <form class="acctf" data-form="email" data-forgot="1"><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="Your email" value="${esc(email||'')}" aria-label="Email" required><button class="btn primary">Email me a link</button></form>
+      <p class="fine">We’ll email you a code. Type it in the app and you’ll pick a new PIN.</p>
+      <form class="acctf" data-form="email" data-forgot="1"><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="Your email" value="${esc(email||'')}" aria-label="Email" required><button class="btn primary">Email me a code</button></form>
       <button class="lnk" data-cmd="signinpin">Back to sign in</button>`);
     return;
   }
@@ -2822,8 +2834,8 @@ document.addEventListener('submit',async e=>{
       const email=f.querySelector('#email').value.trim(),forgot=!!f.dataset.forgot;
       const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:!forgot}});
       if(error)throw error;
-      if(forgot){state.resetPin=true;save()}
-      showSignIn('code',email);
+      if(forgot){state.resetPin=true;save();showSignIn('forgotcode',email)}
+      else showSignIn('code',email);
     }else if(f.dataset.form==='code'){
       const raw=f.querySelector('#otp').value.trim(),token=raw.replace(/\s/g,'');
       let res;
