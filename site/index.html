@@ -428,6 +428,14 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .codebox b{display:block;font:600 24px/1.1 var(--f-mono);letter-spacing:.12em}
 .addf,.acctf{display:flex;gap:8px}
 .acctf.col{flex-direction:column}
+.pinrow{display:flex;gap:10px;margin:2px 0 4px}
+.pinbox{width:56px;height:64px;flex:none;text-align:center;font:800 28px/1 var(--f-display);border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);padding:0}
+.pinbox:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.acctf .lab{font-size:13px;font-weight:650;color:var(--muted);margin:4px 0 -2px}
+.stepno{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0}
+.bigchoice{display:flex;flex-direction:column;gap:10px;margin:6px 0}
+.bigchoice .btn{padding:16px 18px;font-size:16.5px;justify-content:center}
+.coderow{display:flex;gap:8px}.coderow input{flex:1}
 .pinbig{font:800 44px/1 var(--f-display,system-ui);letter-spacing:.18em;margin:2px 0 4px}
 .acctf input[readonly]{color:var(--muted)}
 .invbox{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding:12px;border-radius:12px;background:var(--surface-2)}
@@ -2476,8 +2484,12 @@ const friendly=err=>{const m=(err&&err.message)||String(err);
   if(/rate limit|security purposes|too many/i.test(m))return 'Too many sign-in emails were sent. Wait a few minutes and try again.';
   if(/(token|otp).*(expired|invalid)|(expired|invalid).*(token|otp)/i.test(m))return 'That code didn’t work. Check it, or ask for a new one.';
   if(/failed to fetch|network/i.test(m))return 'No connection. Check your internet and try again.';
-  if(/invalid login credentials/i.test(m))return 'That email and PIN don’t match. Check the PIN you were sent.';
+  if(/invalid login credentials/i.test(m))return 'That email and PIN don’t match. Check them, or tap Forgot PIN?';
   if(/pin length/i.test(m))return 'Your PIN is 4 digits.';
+  if(/pins differ/i.test(m))return 'The two PINs don’t match. Type it again.';
+  if(/email needed/i.test(m))return 'Type your email address.';
+  if(/bad display name/i.test(m))return 'Please use your real first name.';
+  if(/signups not allowed|user not found/i.test(m))return 'No account uses that email. Check the spelling, or join with an invite.';
   if(/code length/i.test(m))return 'The invite code is 8 letters and numbers, like KX7P-M2QD.';
   if(/invite_nomatch/.test(m))return 'That invite code isn’t right. Check it against the message you got.';
   if(/invite_used/.test(m))return 'That invite code was already used. If it was you, sign in with your email and PIN.';
@@ -2515,7 +2527,7 @@ function signedOut(){
   refresh();
   if(joinToken){showJoin(joinToken);return}
   if(joinCode){showJoinCode(joinEmail,joinCode);joinCode=null;return}
-  if(!state.noSignIn)showSignIn();
+  if(!state.noSignIn){if(state.lastUser)showSignIn();else showStart()}
 }
 /* wipe what this phone keeps (visits, names, unsent ratings, photos, visit detection); the account's shared ratings are untouched */
 function clearPhone(){
@@ -2544,6 +2556,7 @@ async function finishSignIn(){
   await syncUp();
   flushLinks();
   await pullShared(true);
+  if(state.resetPin){state.resetPin=false;save();showSetPin(true);autoLand=false;renderInvites();return}
   if(autoLand&&!pendingWelcome){const t=landOn();if(t!==current)go(t)}
   autoLand=false;
   if(pendingWelcome)showWelcome();
@@ -2558,7 +2571,7 @@ function renderAcct(){
   if(sb&&me){
     const nm=myProfile&&myProfile.display_name;
     $('#setAcctLine').innerHTML=`Signed in as <b>${esc(nm||'you')}</b> · ${esc(me.email||'')}`;
-    $('#setAcctBtns').innerHTML=`<button class="btn" data-cmd="signout">Sign out</button><button class="btn danger" data-cmd="signoutclear">Sign out and clear this phone</button>`;
+    $('#setAcctBtns').innerHTML=`<button class="btn" data-cmd="changepin">Change PIN</button><button class="btn" data-cmd="signout">Sign out</button><button class="btn danger" data-cmd="signoutclear">Sign out and clear this phone</button>`;
   }else{
     $('#setAcctLine').textContent='Not signed in. Your ratings stay on this phone until you sign in.';
     $('#setAcctBtns').innerHTML=`<button class="btn primary" data-cmd="signin">Sign in</button>`;
@@ -2588,17 +2601,60 @@ function showSignIn(step,email){
       <button class="lnk" data-cmd="signin">Back to PIN sign-in</button>`);
     return;
   }
-  /* beta sign-in: each tester gets a 4-digit PIN from the organizer; it never changes.
+  if(step==='forgot'){
+    acctOpen(`<h2 class="h2">Forgot your PIN?</h2>
+      <p class="fine">We’ll email you a sign-in link. After you sign in, you’ll pick a new PIN.</p>
+      <form class="acctf" data-form="email" data-forgot="1"><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="Your email" value="${esc(email||'')}" aria-label="Email" required><button class="btn primary">Email me a link</button></form>
+      <button class="lnk" data-cmd="signinpin">Back to sign in</button>`);
+    return;
+  }
+  /* beta sign-in: email + a 4-digit PIN the person picked when they joined.
      Supabase needs 6+ characters, so the PIN is stored as "nrbeta" + PIN (PIN 4827 → password nrbeta4827). */
   acctOpen(`<h2 class="h2">Sign in</h2>
-    <p class="fine">Use your email and the 4-digit PIN you were sent for the beta. Your Timeline and visits stay on this phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
     <form class="acctf col" data-form="pass">
-      <input id="email" type="email" autocomplete="username" inputmode="email" placeholder="Email" value="${esc(email||'')}" aria-label="Email" required>
-      <input id="pw" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="4-digit PIN" aria-label="4-digit PIN" required>
+      <input id="email" type="email" autocomplete="username" inputmode="email" placeholder="Your email" value="${esc(email||'')}" aria-label="Email" required>
+      <p class="lab">Your 4-digit PIN</p>${pinBoxes('sp','PIN')}
       <div class="btns"><button class="btn primary">Sign in</button></div>
     </form>
-    <div class="btns"><button class="btn" data-cmd="joincode">Got an invite code? Join</button></div>
-    <div class="lnks"><button class="lnk" data-cmd="notnow">Not now, use it just for me</button><button class="lnk" data-cmd="linksignin">Email me a sign-in link instead</button></div>`);
+    <div class="lnks"><button class="lnk" data-cmd="forgotpin">Forgot PIN?</button><button class="lnk" data-cmd="joincode">New here? Join with an invite</button><button class="lnk" data-cmd="notnow">Not now</button></div>`);
+}
+/* first screen for someone not signed in on this phone */
+function showStart(){
+  if(!sb)return;
+  acctOpen(`<h2 class="h2">Welcome to Normal Reviews</h2>
+    <p class="fine">Honest restaurant scores from the places people actually eat. Your Timeline and visits stay on your phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
+    <div class="bigchoice"><button class="btn primary" data-cmd="joincode">I’m new: join with an invite</button><button class="btn" data-cmd="signinpin">I have an account: sign in</button></div>
+    <button class="lnk" data-cmd="notnow">Not now, just try it on this phone</button>`);
+}
+/* four big boxes for a PIN */
+const pinBoxes=(id,label)=>`<div class="pinrow" id="${id}" role="group" aria-label="${label}">${[1,2,3,4].map(i=>`<input class="pinbox" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" aria-label="${label}, digit ${i}">`).join('')}</div>`;
+const getPin=id=>[...document.querySelectorAll('#'+id+' .pinbox')].map(x=>x.value).join('').replace(/\D/g,'');
+function setPinBoxes(row,digits){const bs=[...row.querySelectorAll('.pinbox')];bs.forEach((b,i)=>b.value=digits[i]||'');(bs[Math.min(digits.length,3)]||bs[0]).focus()}
+document.addEventListener('input',e=>{
+  const b=e.target.closest&&e.target.closest('.pinbox');if(!b)return;
+  const d=b.value.replace(/\D/g,'');
+  if(d.length>1){setPinBoxes(b.parentNode,d.slice(0,4));return}         /* pasted or typed several at once */
+  b.value=d;
+  if(d){const n=b.nextElementSibling;if(n)n.focus();else{const f=b.closest('form');const nx=f&&[...f.querySelectorAll('.pinrow')].find(r=>r!==b.parentNode&&r.compareDocumentPosition(b.parentNode)&Node.DOCUMENT_POSITION_PRECEDING&&!getPin(r.id));if(nx)nx.querySelector('.pinbox').focus()}}
+});
+document.addEventListener('keydown',e=>{
+  const b=e.target.closest&&e.target.closest('.pinbox');if(!b||e.key!=='Backspace'||b.value)return;
+  const p=b.previousElementSibling;if(p){p.value='';p.focus();e.preventDefault()}
+});
+document.addEventListener('paste',e=>{
+  const b=e.target.closest&&e.target.closest('.pinbox');if(!b)return;
+  const d=((e.clipboardData&&e.clipboardData.getData('text'))||'').replace(/\D/g,'');if(!d)return;
+  e.preventDefault();setPinBoxes(b.parentNode,d.slice(0,4));
+});
+/* pick a new PIN: after "Forgot PIN?", or from Settings */
+function showSetPin(after){
+  acctOpen(`<h2 class="h2">${after?'Pick a new PIN':'Change your PIN'}</h2>
+    <p class="fine">You’ll sign in with ${esc((me&&me.email)||'your email')} and this PIN on any phone.</p>
+    <form class="acctf col" data-form="setpin">
+      <p class="lab">New 4-digit PIN</p>${pinBoxes('np1','New PIN')}
+      <p class="lab">Type it again</p>${pinBoxes('np2','New PIN again')}
+      <div class="btns"><button class="btn primary">Save PIN</button>${after?'':'<button class="btn" type="button" data-cmd="closeacct">Cancel</button>'}</div>
+    </form>`);
 }
 /* ---------- inviting ---------- */
 async function renderInvites(){
@@ -2616,7 +2672,7 @@ const fmtCode=c=>/^[A-Z0-9]{8}$/.test(c)?c.slice(0,4)+'-'+c.slice(4):c;
 const inviteLink=(code,email)=>location.origin+location.pathname.replace(/[^/]*$/,'')+'get#c='+code+(email?'&e='+encodeURIComponent(email):'');
 function inviteMessage(code){
   const from=(myProfile&&myProfile.display_name)||'A friend';
-  return `${from} invited you to the Normal Reviews beta: honest restaurant scores from the places people actually eat.\n\nOpen this on your phone:\n${inviteLink(code)}\n(Android phones get the app; iPhones open it in Safari.)\n\nYour invite code: ${fmtCode(code)}\nTap “Got an invite code? Join”, enter your email and the code, and pick a 4-digit PIN. The code works once, for 14 days.\n\nYour Timeline stays on your phone; only restaurants you rate are shared.`;
+  return `${from} invited you to the Normal Reviews beta: honest restaurant scores from the places people actually eat.\n\nOpen this on your phone:\n${inviteLink(code)}\n(Android phones get the app; iPhones open it in Safari.)\n\nYour invite code: ${fmtCode(code)}\nOpen the app, tap “I’m new: join with an invite”, and follow the 3 short steps. You’ll pick a 4-digit PIN. The code works once, for 14 days.\n\nYour Timeline stays on your phone; only restaurants you rate are shared.`;
 }
 function showInvite(code){
   const msg=inviteMessage(code),link=inviteLink(code),canShare=!!navigator.share;
@@ -2663,20 +2719,40 @@ async function showJoin(token){
     <p class="fine">You’ll sign in with ${esc(info.email)} and this PIN on any phone, so write it down.</p>
     <button class="lnk" data-cmd="joinsignin">Already joined? Sign in</button>`);
 }
+/* joining with an invite code, in three short steps */
+let J={code:'',email:'',name:'',inviter:''};
 function showJoinCode(email,code){
   if(!sb)return;
-  acctOpen(`<h2 class="h2">Join the beta</h2>
-    <p class="fine">Enter your email and the invite code you got, then pick a 4-digit PIN. Your Timeline and visits stay on your phone; only restaurants you rate are shared. <a href="privacy.html" target="_blank" rel="noopener">What’s shared</a></p>
-    <form class="acctf col" data-form="joinc">
-      <input id="jemail" type="email" autocomplete="email" inputmode="email" placeholder="Email the invite was sent to" value="${esc(email||'')}" aria-label="Email" required>
-      <input id="jcode" type="text" maxlength="9" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Invite code" value="${esc(fmtCode(String(code||'').toUpperCase()))}" aria-label="Invite code" required>
-      <input id="jname" maxlength="40" autocomplete="given-name" placeholder="Your first name (friends see this)" aria-label="Your name" required>
-      <input id="jpin" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="Choose a 4-digit PIN" aria-label="Choose a 4-digit PIN" required>
-      <div class="btns"><button class="btn primary">Join the beta</button></div>
-    </form>
-    <p class="fine">You’ll sign in with your email and this PIN on any phone, so write it down.</p>
-    <button class="lnk" data-cmd="signin">Already joined? Sign in</button>`);
-  if(email&&code){const n=$('#jname');if(n)n.focus({preventScroll:true})}
+  if(code)J.code=String(code).toUpperCase();if(email)J.email=email;
+  joinStep(1);
+}
+function joinStep(n){
+  const head=`<p class="stepno">Join the beta · step ${n} of 3</p>`;
+  if(n===1){
+    const canPaste=!!(navigator.clipboard&&navigator.clipboard.readText);
+    acctOpen(`${head}<h2 class="h2">Your invite code</h2>
+      <p class="fine">It’s in the invite message you got${NATIVE?', and it was copied when you downloaded the app':''}.</p>
+      <form class="acctf col" data-form="j1">
+        <div class="coderow"><input id="jcode" type="text" maxlength="9" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD-2345" value="${esc(fmtCode(J.code))}" aria-label="Invite code" required>${canPaste?'<button class="btn" type="button" data-cmd="jpaste">Paste</button>':''}</div>
+        <div class="btns"><button class="btn primary">Next</button></div>
+      </form>
+      <div class="lnks"><button class="lnk" data-cmd="signinpin">I already have an account</button><button class="lnk" data-cmd="notnow">Not now</button></div>`);
+  }else if(n===2){
+    acctOpen(`${head}<h2 class="h2">About you</h2>
+      <form class="acctf col" data-form="j2">
+        <input id="jname" maxlength="40" autocomplete="given-name" placeholder="Your first name (friends see this)" value="${esc(J.name)}" aria-label="Your first name" required>
+        <input id="jemail" type="email" autocomplete="email" inputmode="email" placeholder="Your email" value="${esc(J.email)}" aria-label="Your email" required>
+        <div class="btns"><button class="btn primary">Next</button><button class="btn" type="button" data-cmd="jback" data-step="1">Back</button></div>
+      </form>`);
+  }else{
+    acctOpen(`${head}<h2 class="h2">Pick your PIN</h2>
+      <p class="fine">${J.inviter?`<b>${esc(J.inviter)}</b> invited you. `:''}You’ll sign in with <b>${esc(J.email)}</b> and this PIN on any phone, so remember it.</p>
+      <form class="acctf col" data-form="j3">
+        <p class="lab">4-digit PIN</p>${pinBoxes('jp1','PIN')}
+        <p class="lab">Type it again</p>${pinBoxes('jp2','PIN again')}
+        <div class="btns"><button class="btn primary">Join</button><button class="btn" type="button" data-cmd="jback" data-step="2">Back</button></div>
+      </form>`);
+  }
 }
 function showWelcome(){
   const w=pendingWelcome;pendingWelcome=null;if(!w)return;
@@ -2706,28 +2782,45 @@ document.addEventListener('submit',async e=>{
       if(data&&data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){pendingWelcome=null;throw new Error('already registered')}
       if(!data.session){pendingWelcome=null;throw new Error('confirm email is on')}
       joinToken=null;
-    }else if(f.dataset.form==='joinc'){
-      const email=f.querySelector('#jemail').value.trim().toLowerCase(),code=f.querySelector('#jcode').value.toUpperCase().replace(/[^A-Z0-9]/g,''),
-        name=f.querySelector('#jname').value.trim().slice(0,40),pin=f.querySelector('#jpin').value.replace(/\D/g,'');
+    }else if(f.dataset.form==='j1'){
+      const code=f.querySelector('#jcode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
       if(!(code.length===8||/^\d{6}$/.test(code)))throw new Error('code length');
+      J.code=code;joinStep(2);
+    }else if(f.dataset.form==='j2'){
+      const name=f.querySelector('#jname').value.trim().slice(0,40),email=f.querySelector('#jemail').value.trim().toLowerCase();
       if(!name)throw new Error('name needed');
-      if(pin.length!==4)throw new Error('pin length');
-      const {data:chk,error:ce}=await sb.rpc('invite_check',{p_email:email,p_code:code});if(ce)throw ce;
-      if(!chk||!chk.ok)throw new Error('invite_'+((chk&&chk.reason)||'nomatch'));
-      pendingWelcome={name,pin,email,inviter:chk.inviter};
-      const {data,error}=await sb.auth.signUp({email,password:'nrbeta'+pin,options:{data:{invite:code,display_name:name}}});
+      if(badName(name))throw new Error('bad display name');
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw new Error('email needed');
+      J.name=name;J.email=email;
+      const {data:chk,error:ce}=await sb.rpc('invite_check',{p_email:email,p_code:J.code});if(ce)throw ce;
+      if(!chk||!chk.ok){const r=(chk&&chk.reason)||'nomatch';if(r==='nomatch'||r==='used'||r==='expired')joinStep(1);throw new Error('invite_'+r)}
+      J.inviter=chk.inviter||'';joinStep(3);
+    }else if(f.dataset.form==='j3'){
+      const p1=getPin('jp1'),p2=getPin('jp2');
+      if(p1.length!==4)throw new Error('pin length');
+      if(p1!==p2){setPinBoxes($('#jp2'),'');throw new Error('pins differ')}
+      pendingWelcome={name:J.name,pin:p1,email:J.email,inviter:J.inviter};
+      const {data,error}=await sb.auth.signUp({email:J.email,password:'nrbeta'+p1,options:{data:{invite:J.code,display_name:J.name}}});
       if(error){pendingWelcome=null;throw error}
       if(data&&data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){pendingWelcome=null;throw new Error('already registered')}
       if(!data.session){pendingWelcome=null;throw new Error('confirm email is on')}
+      J={code:'',email:'',name:'',inviter:''};
+    }else if(f.dataset.form==='setpin'){
+      const p1=getPin('np1'),p2=getPin('np2');
+      if(p1.length!==4)throw new Error('pin length');
+      if(p1!==p2){setPinBoxes($('#np2'),'');throw new Error('pins differ')}
+      const {error}=await sb.auth.updateUser({password:'nrbeta'+p1});if(error)throw error;
+      closeAcct();toast('PIN saved. Sign in with '+((me&&me.email)||'your email')+' and '+p1+'.');
     }else if(f.dataset.form==='pass'){
-      const email=f.querySelector('#email').value.trim().toLowerCase(),pin=f.querySelector('#pw').value.replace(/\D/g,'');
+      const email=f.querySelector('#email').value.trim().toLowerCase(),pin=getPin('sp');
       if(pin.length!==4)throw new Error('pin length');
       const {error}=await sb.auth.signInWithPassword({email,password:'nrbeta'+pin});
       if(error)throw error;
     }else if(f.dataset.form==='email'){
-      const email=f.querySelector('#email').value.trim();
-      const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+      const email=f.querySelector('#email').value.trim(),forgot=!!f.dataset.forgot;
+      const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:!forgot}});
       if(error)throw error;
+      if(forgot){state.resetPin=true;save()}
       showSignIn('code',email);
     }else if(f.dataset.form==='code'){
       const raw=f.querySelector('#otp').value.trim(),token=raw.replace(/\s/g,'');
@@ -2939,6 +3032,11 @@ document.addEventListener('click',e=>{
       t.dataset.armed=Date.now();t.textContent='Tap again to delete';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete my rating'}},4000);break}
     case 'needname':askNames(needNameList());break;
     case 'joincode':showJoinCode(($('#email')||{}).value||'','');break;
+    case 'signinpin':showSignIn(null,($('#email')||$('#jemail')||{}).value||J.email);break;
+    case 'forgotpin':showSignIn('forgot',($('#email')||{}).value);break;
+    case 'changepin':showSetPin(false);break;
+    case 'jback':joinStep(+t.dataset.step);break;
+    case 'jpaste':navigator.clipboard.readText().then(x=>{const c=String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(c){$('#jcode').value=fmtCode(c.slice(0,8))}else toast('Nothing to paste. Press and hold the box and tap Paste.')},()=>toast('Press and hold the box and tap Paste.'));break;
     case 'cancelinvite':{
       if(t.dataset.armed&&Date.now()-+t.dataset.armed<4000){cancelInvite(t.dataset.code);break}
       const was=t.textContent;t.dataset.armed=Date.now();t.textContent='Tap again';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent=was}},4000);break}
