@@ -2478,6 +2478,8 @@ const SHARED=!!(CFG.url&&CFG.key&&!/PASTE/i.test(CFG.url+CFG.key));
 let sb=null,me=null,myProfile=null,friendsList=[],lastPull=0,delArmed=0,clearArmed=0;
 const AUTH_IN_URL=/access_token=|error_description=|refresh_token=/.test(location.hash);
 let authUrlPending=AUTH_IN_URL;
+/* opened from the sign-in email (Forgot PIN): after signing in, offer a new PIN right here */
+let fromEmailLink=AUTH_IN_URL&&/access_token=/.test(location.hash);
 const dayStr=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const friendly=err=>{const m=(err&&err.message)||String(err);
   if(/rate limit|security purposes|too many/i.test(m))return 'Too many sign-in emails were sent. Wait a few minutes and try again.';
@@ -2555,7 +2557,7 @@ async function finishSignIn(){
   await syncUp();
   flushLinks();
   await pullShared(true);
-  if(state.resetPin){state.resetPin=false;save();showSetPin(true);autoLand=false;renderInvites();return}
+  if(state.resetPin||(fromEmailLink&&!pendingWelcome)){const viaLink=fromEmailLink&&!state.resetPin;state.resetPin=false;fromEmailLink=false;save();showSetPin(true,viaLink);autoLand=false;renderInvites();return}
   if(autoLand&&!pendingWelcome){const t=landOn();if(t!==current)go(t)}
   autoLand=false;
   if(pendingWelcome)showWelcome();
@@ -2587,10 +2589,10 @@ function showSignIn(step,email){
   if(!sb)return;
   if(step==='code'){
     acctOpen(`<h2 class="h2">Check your email</h2>
-      ${NATIVE?`<p class="fine">We sent a sign-in email to <b>${esc(email)}</b>. In your email app, <b>press and hold</b> the sign-in link, tap <b>Copy link</b>, then paste it here. It can take a minute, so check spam too.</p>`
+      ${NATIVE?`<p class="fine">We sent an email to <b>${esc(email)}</b>. It can take a minute, so check spam too.</p><ol class="fine vdsteps"><li><b>Tap the link</b> in the email. It opens in your browser and asks you to pick a new PIN.</li><li>Come back here and <b>sign in</b> with your email and the new PIN.</li></ol><p class="fine">Or, to do it all in the app: press and hold the link, tap Copy link, and paste it here.</p>`
       :`<p class="fine">We sent a sign-in email to <b>${esc(email)}</b>. Open it on this phone and tap the sign-in link; you’ll be signed in automatically. It can take a minute, so check spam too.</p><p class="fine">If the link opens in a different app or browser, press and hold it instead, tap Copy link, and paste it here. If the email shows a number code, type that.</p>`}
       <form class="acctf" data-form="code" data-email="${esc(email)}"><input id="otp" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" placeholder="${NATIVE?'Paste the link':'Link or code'}" aria-label="Sign-in link or code" required><button class="btn primary">Sign in</button></form>
-      <button class="lnk" data-cmd="signin">Back to sign in</button>`);
+      <button class="lnk" data-cmd="signinpin">I have my new PIN: sign in</button>`);
     return;
   }
   if(step==='link'){
@@ -2646,13 +2648,13 @@ document.addEventListener('paste',e=>{
   e.preventDefault();setPinBoxes(b.parentNode,d.slice(0,4));
 });
 /* pick a new PIN: after "Forgot PIN?", or from Settings */
-function showSetPin(after){
+function showSetPin(after,viaLink){
   acctOpen(`<h2 class="h2">${after?'Pick a new PIN':'Change your PIN'}</h2>
-    <p class="fine">You’ll sign in with ${esc((me&&me.email)||'your email')} and this PIN on any phone.</p>
+    <p class="fine">${viaLink?'You’re signed in from the email link. ':''}You’ll sign in with ${esc((me&&me.email)||'your email')} and this PIN on any phone${viaLink&&!NATIVE?', including in the Normal Reviews app':''}.</p>
     <form class="acctf col" data-form="setpin">
       <p class="lab">New 4-digit PIN</p>${pinBoxes('np1','New PIN')}
       <p class="lab">Type it again</p>${pinBoxes('np2','New PIN again')}
-      <div class="btns"><button class="btn primary">Save PIN</button>${after?'':'<button class="btn" type="button" data-cmd="closeacct">Cancel</button>'}</div>
+      <div class="btns"><button class="btn primary">Save PIN</button>${after&&!viaLink?'':`<button class="btn" type="button" data-cmd="closeacct">${viaLink?'Keep my PIN':'Cancel'}</button>`}</div>
     </form>`);
 }
 /* ---------- inviting ---------- */
@@ -2809,7 +2811,8 @@ document.addEventListener('submit',async e=>{
       if(p1.length!==4)throw new Error('pin length');
       if(p1!==p2){setPinBoxes($('#np2'),'');throw new Error('pins differ')}
       const {error}=await sb.auth.updateUser({password:'nrbeta'+p1});if(error)throw error;
-      closeAcct();toast('PIN saved. Sign in with '+((me&&me.email)||'your email')+' and '+p1+'.');
+      if(!NATIVE){acctOpen(`<h2 class="h2">New PIN saved</h2><p class="pinbig">${esc(p1)}</p><p class="fine">Go back to the Normal Reviews app and sign in with <b>${esc((me&&me.email)||'your email')}</b> and this PIN. You can also keep using this page.</p><div class="btns"><button class="btn primary" data-cmd="closeacct">OK</button></div>`)}
+      else{closeAcct();toast('PIN saved. Sign in with '+((me&&me.email)||'your email')+' and '+p1+'.')}
     }else if(f.dataset.form==='pass'){
       const email=f.querySelector('#email').value.trim().toLowerCase(),pin=getPin('sp');
       if(pin.length!==4)throw new Error('pin length');
