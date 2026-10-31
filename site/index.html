@@ -2484,7 +2484,7 @@ let fromEmailLink=AUTH_IN_URL&&/access_token=/.test(location.hash);
 const dayStr=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const friendly=err=>{const m=(err&&err.message)||String(err);
   if(/rate limit|security purposes|too many/i.test(m))return 'Too many sign-in emails were sent. Wait a few minutes and try again.';
-  if(/(token|otp).*(expired|invalid)|(expired|invalid).*(token|otp)/i.test(m))return 'That code didn’t work. Check it, or tap Send a new code.';
+  if(/(token|otp).*(expired|invalid)|(expired|invalid).*(token|otp)/i.test(m))return 'That code didn’t work. Check it, or tap Send another email.';
   if(/failed to fetch|network/i.test(m))return 'No connection. Check your internet and try again.';
   if(/invalid login credentials/i.test(m))return 'That email and PIN don’t match. Check them, or tap Forgot PIN?';
   if(/pin length/i.test(m))return 'Your PIN is 4 digits.';
@@ -2605,19 +2605,20 @@ function showSignIn(step,email){
   }
   if(step==='forgotcode'){
     acctOpen(`<h2 class="h2">Check your email</h2>
-      <p class="fine">We sent a code to <b>${esc(email)}</b>. It can take a minute, so check spam too. Type it here, then you’ll pick a new PIN.</p>
+      <p class="fine">We sent an email to <b>${esc(email)}</b>. It can take a minute, so check spam too.</p>
+      <ol class="fine vdsteps"><li><b>Tap the link</b> in the email. It opens your browser and asks for a new PIN.</li><li>Come back here and <b>sign in</b> with your email and the new PIN.</li></ol>
+      <p class="fine">If the email shows a number code instead, type it here:</p>
       <form class="acctf col" data-form="code" data-email="${esc(email)}">
         <input id="otp" class="codebig" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code" aria-label="Code from the email" required>
-        <div class="btns"><button class="btn primary">Continue</button></div>
+        <div class="btns"><button class="btn">Continue</button></div>
       </form>
-      <p class="fine">If the email has a link instead of a code, tap the link: it opens your browser, where you can pick a new PIN. Then sign in here with it.</p>
-      <div class="lnks"><button class="lnk" data-cmd="forgotpin">Send a new code</button><button class="lnk" data-cmd="signinpin">Back to sign in</button></div>`);
+      <div class="lnks"><button class="lnk" data-cmd="signinpin">I have my new PIN: sign in</button><button class="lnk" data-cmd="forgotpin">Send another email</button></div>`);
     return;
   }
   if(step==='forgot'){
     acctOpen(`<h2 class="h2">Forgot your PIN?</h2>
-      <p class="fine">We’ll email you a code. Type it in the app and you’ll pick a new PIN.</p>
-      <form class="acctf" data-form="email" data-forgot="1"><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="Your email" value="${esc(email||'')}" aria-label="Email" required><button class="btn primary">Email me a code</button></form>
+      <p class="fine">We’ll email you a sign-in link. Tap it and you’ll pick a new PIN.</p>
+      <form class="acctf" data-form="email" data-forgot="1"><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="Your email" value="${esc(email||'')}" aria-label="Email" required><button class="btn primary">Email me a link</button></form>
       <button class="lnk" data-cmd="signinpin">Back to sign in</button>`);
     return;
   }
