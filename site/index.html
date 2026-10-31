@@ -280,6 +280,13 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .plate.has-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgb(0 0 0 / .25),transparent 35%,transparent 65%,rgb(0 0 0 / .35))}
 .plate.has-photo .pchip{z-index:1}
 .cbody{overflow:hidden}
+.ccrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.addc{font-size:14.5px;font-weight:650}
+.ccmt{display:flex;flex-direction:column;gap:6px}
+.ccmtbox{width:100%;resize:none;font:500 15px/1.35 var(--f-body);padding:9px 11px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.ccmtbox:focus{outline:none;border-color:var(--accent)}
+.cbtn{appearance:none;display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 10px;font:600 13px var(--f-body);cursor:pointer}
+.cbtn svg{width:16px;height:16px}
 .dchips{display:flex;flex-wrap:wrap;gap:6px}
 .dchip{display:inline-flex;align-items:center;gap:5px;max-width:100%;font-size:12.5px;font-weight:600;padding:5px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);min-width:0}
 .dchip svg{width:14px;height:14px;flex:none}
@@ -1084,29 +1091,22 @@ function deckVisits(){
 /* identified by Google's place ID and named from the open map: that name is reliable, so it can't be renamed */
 function googleNamed(k){const tp=state.tplaces[localKey(k)];return !!tp&&(tp.src==='google'||tp.src==='link')&&!tp.needName&&!!tp.name}
 function cardHTML(v){
-  const m=meta(v.key), P=state.params, p=G.by.get(canon(v.key)), fs=new Set(state.friends);
-  const ppl=p?[...p.people].filter(u=>u!=='me'):[];
-  const fr=ppl.filter(u=>fs.has(u)).length, others=ppl.length-fr;
+  /* who else rated a place stays hidden until after you rate it, so their opinion doesn't steer yours */
+  const m=meta(v.key);
   const mono=m.tl&&!m.named?'?':m.name.replace(/^The\s+/,'')[0];
   let extra='';
   if(m.tl){
-    const url=mapsUrl(m.tp);
-    extra=`<div class="btns" data-nodrag>
-      ${googleNamed(v.key)?'':`<button class="btn" data-cmd="name" data-key="${esc(v.key)}">${m.named?'Rename':'Name it'}</button>`}
-      ${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open in Maps ↗</a>`:''}
-      ${m.named?'':`<button class="btn danger" data-cmd="hide" data-key="${esc(v.key)}">Not food</button>`}</div>`;
+    const url=mapsUrl(m.tp),k=esc(v.key);
     const cands=!m.named&&m.tp&&m.tp.cands;
-    const alts=m.tp&&m.tp.osm&&!state.names[v.key]&&m.tp.alts;
-    const srch=`<button class="lnk" data-cmd="fixsearch" data-key="${esc(v.key)}">Search…</button>`;
-    if(alts&&alts.length)extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span>${alts.map((c,i)=>`<button class="lnk" data-cmd="pickalt" data-key="${esc(v.key)}" data-i="${i}">${esc(c.n)}</button>`).join('')}${srch}<button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
-    else if(m.tp&&!state.names[v.key])extra+=`<div class="alts" data-nodrag><span class="fine">Not right?</span>${srch}${googleNamed(v.key)?'':`<button class="lnk" data-cmd="name" data-key="${esc(v.key)}">Type a name</button>`}<button class="lnk warn" data-cmd="hide" data-key="${esc(v.key)}">Not food</button></div>`;
-    if(cands&&cands.length)extra=`<div class="pick" data-nodrag><p class="fine">Were you at…</p><div class="btns">${cands.map((c,i)=>`<button class="btn" data-cmd="pick" data-key="${esc(v.key)}" data-i="${i}">${esc(c.n)} <small class="fine">${c.d} m</small></button>`).join('')}<button class="btn ghost" data-cmd="pick" data-key="${esc(v.key)}" data-i="-1">None of these</button></div></div>`+extra;
+    if(cands&&cands.length)extra+=`<div class="pick" data-nodrag><p class="fine">Were you at…</p><div class="btns">${cands.map((c,i)=>`<button class="btn" data-cmd="pick" data-key="${k}" data-i="${i}">${esc(c.n)} <small class="fine">${c.d} m</small></button>`).join('')}<button class="btn ghost" data-cmd="pick" data-key="${k}" data-i="-1">None of these</button></div></div>`;
+    extra+=`<div class="alts" data-nodrag><span class="fine">Wrong place?</span><button class="lnk" data-cmd="fixsearch" data-key="${k}">Search</button>${googleNamed(v.key)?'':`<button class="lnk" data-cmd="name" data-key="${k}">${m.named?'Rename':'Name it'}</button>`}<button class="lnk warn" data-cmd="hide" data-key="${k}">Not food</button>${url?`<a class="lnk" href="${esc(url)}" target="_blank" rel="noopener">Map ↗</a>`:''}</div>`;
   }
   const dr=state.drafts[v.id]||{}, dphoto=dr.photo&&PH.mem.get(dr.photo), photo=dphoto||cover(v.key);
-  const chips=(dphoto?`<span class="dchip">${ICON.cam}<span>Photo added</span></span>`:'')+(dr.comment?`<span class="dchip">${ICON.cmt}<span>${esc(dr.comment)}</span></span>`:'');
-  if(chips)extra+=`<div class="dchips">${chips}</div>`;
-  const note=m.tl?(m.named?'Only you have rated this spot so far.':m.gname?'Google’s name, shown only to you. It isn’t on the open map, so type its name (Name it) for everyone to see it.':'No name yet. Search for it, or name it once and it sticks.')
-    :(ppl.length?`${whoRated(fr,others)} rated this in the last ${P.window} days. Scores stay hidden until you swipe.`:'Nobody else has rated this recently.');
+  const cam=`<button class="cbtn" data-cmd="mphoto2" data-visit="${esc(v.id)}" aria-label="${dphoto?'Change photo':'Add a photo'}">${ICON.cam}${dphoto?'<span>Photo added</span>':''}</button>`;
+  extra+=(openCmt===v.id||dr.comment)
+    ?`<div class="ccmt" data-nodrag><textarea class="ccmtbox" data-visit="${esc(v.id)}" maxlength="140" rows="2" placeholder="What stood out? Shown with your rating.">${esc(dr.comment||'')}</textarea><div class="ccrow"><span class="fine ccount">${(dr.comment||'').length}/140</span>${cam}</div></div>`
+    :`<div class="ccrow" data-nodrag><button class="lnk addc" data-cmd="ccomment" data-visit="${esc(v.id)}">+ Add a comment</button>${cam}</div>`;
+  const note='';
   const ask=m.tl&&!m.named&&m.tp&&m.tp.cands&&m.tp.cands.length;
   return `<div class="plate${photo?' has-photo':''}${ask?' compact':''}" style="--h:${m.hue}${photo?`;background-image:url('${photo}')`:''}"><span class="pchip a">${esc(m.cuisine)}</span><span class="pchip b">${ago(v.start)}</span>${m.tl&&!m.named?`<span class="mono" aria-hidden="true">${esc(mono)}</span>`:foodArt(m.cuisine+' '+m.name)}<button class="more" data-cmd="menu" data-visit="${esc(v.id)}" aria-label="More options for ${esc(m.name)}">${ICON.dots}</button></div>
   <div class="cbody">
@@ -1114,7 +1114,6 @@ function cardHTML(v){
     <p class="sub">${esc(m.tl?m.sub:m.hood+' · San Jose')}</p>
     <p class="visit"><b>${esc(v.source==='manual'?new Date(v.start).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+' · '+mealName(v.start):when(v.start))}</b>${v.source==='manual'?'':`<span>stayed ${dur(v.start,v.end)}</span>`}</p>
     ${extra}
-    <p class="cnote">${esc(note)}</p>
   </div>
   <div class="stamp t1" data-dir="left">OK</div><div class="stamp t2" data-dir="down">Good</div><div class="stamp t3" data-dir="right">Great</div><div class="stamp t4" data-dir="up">${state.tokens?'Extraordinary':'None left'}</div>`;
 }
@@ -1203,7 +1202,7 @@ function bindDrag(el,v){
 }
 
 /* ---------- card menu ---------- */
-let menuVisit=null,pendingPhoto=null;
+let menuVisit=null,pendingPhoto=null,openCmt=null;   /* openCmt: the card whose comment box is open */
 function openMenu(vid,view){
   const v=state.visits.find(x=>x.id===vid);if(!v)return;
   menuVisit=vid;
@@ -1337,7 +1336,7 @@ function celebrate2(){
 function rate(v,tier,reasons){
   const dr=state.drafts[v.id]||{};
   const rec={reasons:reasons||null,id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),visitId:v.id,key:v.key,tier,ts:v.start,at:Date.now(),sample:v.source==='sample',prevTokens:state.tokens,prevSince:state.sinceToken,comment:dr.comment||null,photo:dr.photo||null,wasSkipped:state.skipped[v.id]||0};
-  delete state.drafts[v.id];delete state.skipped[v.id];
+  delete state.drafts[v.id];delete state.skipped[v.id];if(openCmt===v.id)openCmt=null;
   if(state.delq&&state.delq.includes(v.id))state.delq=state.delq.filter(x=>x!==v.id);   /* rated again after an undo: the new rating replaces the shared one */
   if(tier===4){state.tokens--;celebrate()}
   state.sinceToken++;let earned=false,capped=false;
@@ -3031,6 +3030,8 @@ document.addEventListener('click',e=>{
       if(t.dataset.armed&&Date.now()-+t.dataset.armed<4000){deleteRating(t.dataset.id);break}
       t.dataset.armed=Date.now();t.textContent='Tap again to delete';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete my rating'}},4000);break}
     case 'needname':askNames(needNameList());break;
+    case 'ccomment':{openCmt=t.dataset.visit;renderDeck();const b=document.querySelector(`.ccmtbox[data-visit="${CSS.escape(openCmt)}"]`);if(b)b.focus();break}
+    case 'mphoto2':pendingPhoto=t.dataset.visit;openPicker($('#photoFile'));break;
     case 'joincode':showJoinCode(($('#email')||{}).value||'','');break;
     case 'signinpin':showSignIn(null,($('#email')||$('#jemail')||{}).value||J.email);break;
     case 'forgotpin':showSignIn('forgot',($('#email')||{}).value);break;
@@ -3100,7 +3101,7 @@ document.addEventListener('click',e=>{
       save();refresh();toast('Your ratings are erased');break}
   }
 });
-let dialRaf=0;
+let dialRaf=0,cmtT=0;
 document.addEventListener('change',e=>{
   const id=e.target.id,f=state.find;if(!f)return;
   if(id==='fCat')f.cat=e.target.value;else if(id==='fWho')f.who=e.target.value;else if(id==='fDist')f.dist=+e.target.value;else if(id==='fSort')f.sort=e.target.value;else return;
@@ -3110,6 +3111,11 @@ document.addEventListener('input',e=>{
   if(e.target.id==='fName'&&state.find){state.find.name=e.target.value;renderRank();return}
   if(e.target.id==='fZip'&&state.find){const z=e.target.value.replace(/\D/g,'').slice(0,5);if(e.target.value!==z)e.target.value=z;state.find.zip=z;if(z)loadZips();save();if(z.length===5||!z)renderRank();return}
   if(e.target.id==='cmtInput'){$('#cmtCount').textContent=e.target.value.length+'/140';return}
+  if(e.target.classList&&e.target.classList.contains('ccmtbox')){
+    const vid=e.target.dataset.visit,t=e.target.value.slice(0,140);
+    (state.drafts[vid]||(state.drafts[vid]={})).comment=t||undefined;
+    const c=e.target.parentNode.querySelector('.ccount');if(c)c.textContent=t.length+'/140';
+    clearTimeout(cmtT);cmtT=setTimeout(save,400);return}
 });
 $('#bayOnly').addEventListener('change',e=>{state.bayOnly=e.target.checked;save();refresh();toast(state.bayOnly?'Stops outside CA, OR, WA and NV are hidden':'Stops everywhere are shown')});
 $('#mealOnly').addEventListener('change',e=>{state.mealOnly=e.target.checked;save();toast(state.mealOnly?'Meal-time filter on for your next import':'All stops will be included on your next import')});
