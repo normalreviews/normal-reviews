@@ -197,7 +197,24 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .frow2 input{flex:1 1 60%;min-width:0;font:600 15px var(--f-body);padding:9px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
 .frow2 input#fZip{flex:0 0 32%}
 .frow2 input:focus{outline:none;border-color:var(--accent)}
-.count{margin:2px 0 -4px;font-size:13px;font-weight:600;color:var(--muted)}
+.count{margin:2px 0 -4px;font-size:13px;font-weight:600;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.count .lnk{font-size:13px}
+.ykey{display:inline-flex;align-items:center;gap:5px;font-weight:500}
+.ykey .ytier{width:17px;height:17px;font-size:10px}
+.fmore{display:flex;flex-direction:column;gap:8px}
+.fmore .chips{flex-wrap:wrap}
+.ichip{display:inline-flex;align-items:center;gap:6px;font:650 14px var(--f-body)}
+.ichip.set{border-color:var(--accent);color:var(--accent)}
+.lsc .score{font-size:15px;padding:5px 8px 4px;min-width:48px}
+.litem{grid-template-columns:22px minmax(0,1fr) auto auto}
+.lgrp.flat .litem{grid-template-columns:22px minmax(0,1fr) auto}
+.lname .nm{display:inline-flex;align-items:center;gap:6px}
+.ltier .fine b{color:var(--ink);font-weight:650}
+.howkey{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:14px}
+.howkey span{display:inline-flex;align-items:center;gap:6px}
+#acctBody svg[role="img"]{width:100%;height:auto}
+.dbig .lnk{display:block;margin-top:4px;font-size:13px}
+.seg.wide{margin-top:4px}
 .fbar.listmode ~ .count{font-weight:400;font-size:13.5px}
 .lede.small{font-size:14px;margin:-6px 0 0}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -369,6 +386,8 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .dhead > div{min-width:0}
 .dhead h2{font:750 28px/1.05 var(--f-display);letter-spacing:-.03em;margin:4px 0 0;overflow-wrap:anywhere}
+#sheetBody{position:relative}
+#sheetBody > .dhead .xbtn{position:absolute;top:16px;right:16px;z-index:2;box-shadow:var(--shadow)}
 .xbtn{appearance:none;border:1px solid var(--line);background:var(--surface);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer;flex:none}
 .dplate{position:relative;height:120px;border-radius:16px;overflow:hidden;background:hsl(var(--h) 32% 31%);color:#fff}
 .dplate .art{position:absolute;right:6%;bottom:-6%;height:115%;width:auto;filter:drop-shadow(0 8px 12px rgb(0 0 0 / .28));transform:rotate(-4deg)}
@@ -541,41 +560,31 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     </section>
 
     <section class="view gutter" id="v-rankings" aria-label="Rankings" hidden>
-      <div class="rankhead">
-        <div>
-          <p class="eyebrow"><span id="rankWhere">Near you</span> · last <span class="win">180</span> days</p>
-          <h1 class="h1">Rankings</h1>
-        </div>
-        <div class="modes" role="group" aria-label="Whose ratings to score">
-          <button data-mode="friends" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.8-3 3-4.6 5.5-4.6s4.7 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.4"/><path d="M16.2 14.5c2.3 0 4 1.3 4.6 3.7"/></svg>Friends</button>
-          <button data-mode="global" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5z"/></svg>Global</button>
-        </div>
-      </div>
-      <p class="lede small" id="rankLede"></p>
-      <div class="seg wide" role="group" aria-label="Which places">
+      <h1 class="h1">Rankings</h1>
+      <div class="seg wide" role="group" aria-label="Whose ratings">
         <button data-filter="all" aria-pressed="true">Everyone</button>
-        <button data-filter="mine" aria-pressed="false">Rated by me</button>
+        <button data-filter="friends" aria-pressed="false">Friends</button>
         <button data-filter="list" aria-pressed="false">My list</button>
       </div>
       <div class="fbar" id="finder">
         <div class="chips">
           <label class="chip lmo"><span class="sr">Whose list</span><select id="fWho"></select></label>
           <label class="chip"><span class="sr">Food type</span><select id="fCat"></select></label>
-          <label class="chip ndl"><span class="sr">Distance</span><select id="fDist"><option value="0">Anywhere</option><option value="1">Within 1 mi</option><option value="3">Within 3 mi</option><option value="10">Within 10 mi</option><option value="25">Within 25 mi</option></select></label>
-          <label class="chip ndl"><span class="sr">Sort</span><select id="fSort"><option value="best">Best first</option><option value="near">Closest first</option></select></label>
-          <button class="chip ichip" id="fMoreBtn" data-cmd="fmore" aria-expanded="false" aria-label="Search by name or ZIP code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
+          <button class="chip ichip" id="fMoreBtn" data-cmd="fmore" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span id="fMoreLbl">Filters</span></button>
         </div>
-        <div class="frow2" id="fMore" hidden>
+        <div class="fmore" id="fMore" hidden>
+          <div class="chips ndl">
+            <label class="chip"><span class="sr">Distance</span><select id="fDist"><option value="0">Anywhere</option><option value="1">Within 1 mi</option><option value="3">Within 3 mi</option><option value="10">Within 10 mi</option><option value="25">Within 25 mi</option></select></label>
+            <label class="chip"><span class="sr">Sort</span><select id="fSort"><option value="best">Best first</option><option value="near">Closest first</option></select></label>
+          </div>
+          <div class="frow2">
           <input id="fName" type="search" autocomplete="off" placeholder="Search by name" aria-label="Search by name">
           <input id="fZip" class="ndl" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="ZIP code" aria-label="ZIP code (blank = where I am)">
+          </div>
         </div>
       </div>
       <p class="count" id="fNote"></p>
       <ul class="rows" id="rankList"></ul>
-      <div class="panel hist">
-        <div class="listhead"><h2 class="h2">The curve</h2><span class="fine">bars = places · line = target bell curve</span></div>
-        <div id="hist"></div>
-      </div>
     </section>
 
     <section class="view gutter" id="v-map" aria-label="Map" hidden>
@@ -585,9 +594,9 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
           <h1 class="h1">Map</h1>
         </div>
         <div class="modes" role="group" aria-label="Whose ratings to score">
-          <button data-mode="friends" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.8-3 3-4.6 5.5-4.6s4.7 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.4"/><path d="M16.2 14.5c2.3 0 4 1.3 4.6 3.7"/></svg>Friends</button>
-          <button data-mode="global" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5z"/></svg>Global</button>
-        </div>
+          <button data-mode="global" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5z"/></svg>Everyone</button>
+                  <button data-mode="friends" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.8-3 3-4.6 5.5-4.6s4.7 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.4"/><path d="M16.2 14.5c2.3 0 4 1.3 4.6 3.7"/></svg>Friends</button>
+</div>
       </div>
       <div class="maptools">
         <div class="seg" role="group" aria-label="Which places to show">
@@ -1529,7 +1538,8 @@ function renderFinder(L){
   if(document.activeElement!==$('#fZip'))$('#fZip').value=f.zip||'';
   fitChips();
   $('#fCat').parentNode.classList.toggle('set',f.cat!=='all');$('#fDist').parentNode.classList.toggle('set',!!f.dist);$('#fSort').parentNode.classList.toggle('set',f.sort==='near');
-  if((f.name||f.zip)&&$('#fMore').hidden){$('#fMore').hidden=false;$('#fMoreBtn').setAttribute('aria-expanded','true')}
+  const nset=rankFilter==='list'?(f.name?1:0):[!!f.dist,f.sort==='near',!!f.name,!!f.zip].filter(Boolean).length;
+  $('#fMoreLbl').textContent=nset?'Filters · '+nset:rankFilter==='list'?'Search':'Filters';$('#fMoreBtn').classList.toggle('set',!!nset);
 }
 /* ---------- My list: your places by food type and rating, in the order you drag them ----------
    Inside one food type + rating (say Pizza, Great), top of the list counts up to +0.4 of a tier and bottom up to −0.4,
@@ -1591,28 +1601,33 @@ function renderMyList(){
   const all=Object.values(groups).flat();
   renderFinder(all.map(x=>({key:x.r.key})));
   const q=(f.name||'').trim().toLowerCase(),name=who==='me'?'':((fr.find(u=>u.id===who)||{}).name||'Your friend');
-  let html='',shown=0;
+  let html='',shown=0,anyOrderable=false;
+  const item=(x,pos,canMove,flat)=>{const m=meta(x.r.key),g=G&&G.by.get(canon(x.r.key));
+    return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}"><span class="lpos">${pos}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}${flat?' '+ytier(x.r.tier).replace('title="You: ','title="'+(mine?'You':esc(name))+': '):''}</span><span class="rsub">${mine&&needsName(x.r.key)?'<span class="needchip">Needs a name</span> ':''}${esc(shortType(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.cuisine))} · ${ago(x.r.ts).toLowerCase()}</span></button>${g&&g.n?`<span class="lsc">${scoreHTML(g.score)}</span>`:'<span></span>'}${canMove?`<button class="lhandle" aria-label="Move ${esc(m.name)}: drag, or use the up and down arrow keys">${GRIP}</button>`:''}</li>`};
   for(const cat of listCats()){
     if(f.cat!=='all'&&f.cat!==cat)continue;
+    const tiers=[4,3,2,1,0].filter(t=>groups[cat+'|'+t]);if(!tiers.length)continue;
+    const big=tiers.some(t=>groups[cat+'|'+t].length>1);
     let part='';
-    for(const t of [4,3,2,1,0]){
-      const g=cat+'|'+t,mem=groups[g];if(!mem)continue;
+    if(!big){   /* one place per rating: a plain list, best first */
+      const vis=tiers.map(t=>groups[cat+'|'+t][0]).filter(x=>!q||meta(x.r.key).name.toLowerCase().includes(q));
+      if(vis.length){shown+=vis.length;part=`<ol class="lgrp flat">`+vis.map((x,i)=>item(x,vis.length>1?i+1:'',false,true)).join('')+'</ol>'}
+    }else for(const t of tiers){
+      const g=cat+'|'+t,mem=groups[g];
       let items;
       if(mine){const ord=state.order[g];const at=new Map(mem.map(x=>[x.key,x]));items=ord?ord.map(k=>at.get(k)).filter(Boolean):mem.slice().sort((a,b)=>b.r.ts-a.r.ts)}
       else items=mem.slice().sort((a,b)=>(b.r.adj||0)-(a.r.adj||0)||b.r.ts-a.r.ts);
       const vis=q?items.filter(x=>meta(x.r.key).name.toLowerCase().includes(q)):items;if(!vis.length)continue;
       shown+=vis.length;
       const ordered=mine?!!state.order[g]:items.some(x=>Math.abs(x.r.adj||0)>1e-6);
-      const note=items.length<2?'':mine?(ordered?'Your order counts':'Drag to order · not ordered yet'):(ordered?`${esc(name)}’s order`:'Not ordered yet');
-      const canMove=mine&&!q&&items.length>1;
-      part+=`<div class="ltier">${tierHTML(t)}<span class="fine">${items.length} place${items.length===1?'':'s'}${note?' · '+note:''}</span></div><ol class="lgrp" data-g="${esc(g)}">`+vis.map((x,i)=>{const m=meta(x.r.key);
-        return `<li class="litem${canMove?'':' ro'}" data-k="${esc(x.key)}"><span class="lpos">${items.indexOf(x)+1}</span><button class="lname" data-open="${esc(x.r.key)}"><span class="nm">${esc(m.name)}</span><span class="rsub">${mine&&needsName(x.r.key)?'<span class="needchip">Needs a name</span> ':''}${esc(shortType(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:m.sub):m.cuisine))} · ${ago(x.r.ts).toLowerCase()}</span></button>${canMove?`<button class="lhandle" aria-label="Move ${esc(m.name)}: drag, or use the up and down arrow keys">${GRIP}</button>`:''}</li>`}).join('')+'</ol>';
+      const note=items.length<2?'':mine?(ordered?'your order':'drag to order'):(ordered?`${esc(name)}’s order`:'not ordered yet');
+      const canMove=mine&&!q&&items.length>1;if(canMove)anyOrderable=true;
+      part+=`<div class="ltier">${ytier(t)}<span class="fine"><b>${mine?'You':esc(name)} said ${TIERS[t].label}</b> · ${items.length} place${items.length===1?'':'s'}${note?' · '+note:''}</span></div><ol class="lgrp" data-g="${esc(g)}">`+vis.map(x=>item(x,items.indexOf(x)+1,canMove,false)).join('')+'</ol>';
     }
     if(part)html+=`<li class="lcat"><h3>${esc(cat)}</h3>${part}</li>`;
   }
-  $('#fNote').textContent=mine?'Your places by food type and rating. Drag the handle to put your favorite on top of each group. Your order nudges scores a little within the rating you gave, and friends can see it.'
-    :`${name}’s places by food type and rating, in the order they put them.`;
-  $('#rankWhere').textContent=mine?'My list':name+'’s list';
+  $('#fNote').textContent=mine?(anyOrderable?'Drag ⋮⋮ to put your favorite on top. It nudges your scores a little, and friends see your order.':'Your places by food type. Scores are everyone’s.')
+    :`${name}’s places by food type, in the order they put them.`;
   $('#rankList').innerHTML=html||`<li class="emptyrow">${all.length?'Nothing matches. Try another food type.':mine?`You haven’t rated anything in the last ${state.params.window} days yet.`:`${esc(name)} hasn’t rated anything in the last ${state.params.window} days.`}</li>`;
 }
 /* dragging by the ⋮⋮ handle, within one group */
@@ -1639,28 +1654,25 @@ function fitChips(){
 }
 function rowHTML(p){
   const m=meta(p.key), o=(isF()?G:F).by.get(p.key);
-  const alt=`${isF()?'Global':'Friends'} ${o&&o.n?o.score.toFixed(2):'–'}`;
+  const alt=o&&o.n&&Math.abs(o.score-p.score)>=.005?`${isF()?'Everyone':'Friends'} ${o.score.toFixed(2)}`:'';
   const dd=isFinite(p._d)?(miles(p._d)<9.5?miles(p._d).toFixed(1):Math.round(miles(p._d)))+' mi':'';
   const type=shortType(m.tl?(m.cuisine&&m.cuisine!=='Timeline stop'?m.cuisine:''):m.cuisine);
   const bits=[type,dd,`${p.n} rating${p.n===1?'':'s'}`].filter(Boolean).map(esc);
   if(p.problems)bits.push(`<span class="probtxt">${p.problems} problem${p.problems===1?'':'s'}</span>`);
-  return `<li><button class="row" data-open="${esc(p.key)}"><span class="rank">${p._i||p.rank}</span><span class="rmain"><span class="rname"><span class="nm">${esc(m.name)}</span>${p.mine?ytier(p.mine.tier):''}</span><span class="rsub">${bits.join(' · ')}${trendHTML(p)}</span></span><span class="rs">${scoreHTML(p.score)}<span class="alt">${alt}</span></span></button></li>`;
+  return `<li><button class="row" data-open="${esc(p.key)}"><span class="rank">${p._i||p.rank}</span><span class="rmain"><span class="rname"><span class="nm">${esc(m.name)}</span>${p.mine?ytier(p.mine.tier):''}</span><span class="rsub">${bits.join(' · ')}${trendHTML(p)}</span></span><span class="rs">${scoreHTML(p.score)}${alt?`<span class="alt">${alt}</span>`:''}</span></button></li>`;
 }
+const howLink=`<button class="lnk" data-cmd="howscores">How scores work</button>`;
 function renderRank(){
-  const L=S.list, P=state.params, top=L.filter(p=>p.score>=3.5).length;
+  const L=S.list, P=state.params;
   document.querySelectorAll('.win').forEach(e=>e.textContent=P.window);
-  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===state.mode?'true':'false'));
-  $('#rankLede').textContent=isF()
-    ?`You and the ${state.friends.length} people you follow. 3.00 is your group’s normal; higher is better.`
-    :`Everyone’s ratings. 3.00 is a normal spot; higher is better. ${S.active} rating${S.active===1?'':'s'} in the last ${P.window} days.`;
-  if(!L.length){$('#hist').innerHTML='<p class="fine">The curve appears once you’ve rated a few places.</p>';$('#rankList').innerHTML=`<li class="emptyrow">Nothing rated in the last ${P.window} days yet. Import your Timeline and swipe a few visits on the Rate tab.</li>`;return}
-  $('#hist').innerHTML=histSVG(L);
+  const seg=rankFilter==='list'?'list':isF()?'friends':'all';
+  document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===seg?'true':'false'));
   $('#finder').classList.toggle('listmode',rankFilter==='list');
-  document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===rankFilter?'true':'false'));
   if(rankFilter==='list')return renderMyList();
+  if(!L.length){renderFinder(L);$('#fNote').innerHTML=howLink;$('#rankList').innerHTML=`<li class="emptyrow">${isF()?`None of your friends rated anything in the last ${P.window} days.`:`Nothing rated in the last ${P.window} days yet. Swipe a few visits on the Rate tab.`}</li>`;return}
   renderFinder(L);
   const f=state.find,c=findCenter();
-  let shown=rankFilter==='mine'?L.filter(p=>p.mine):L.slice();
+  let shown=L.slice();
   if(f.cat!=='all')shown=shown.filter(p=>catOf(meta(p.key))===f.cat);
   const q=(f.name||'').trim().toLowerCase();if(q)shown=shown.filter(p=>meta(p.key).name.toLowerCase().includes(q));
   const real=c&&isFinite(c.lat)&&(!c.fallback||f.dist);         /* distances on rows only from you or a ZIP */
@@ -1669,13 +1681,23 @@ function renderRank(){
   else if(f.dist&&f.zip)shown=[];                 /* no usable ZIP yet: show nothing rather than everything */
   if(f.sort==='near')shown.sort((a,b)=>(isFinite(a._d)?a._d:1e12)-(isFinite(b._d)?b._d:1e12));
   shown.forEach((p,i)=>p._i=i+1);
-  $('#rankWhere').textContent=!f.dist?'Everywhere':c&&c.label?(c.label==='you'?'Near you':c.fallback?'Near your last visit':'Near '+c.label):f.zip?'By ZIP code':'Near you';
   const np=`${shown.length} place${shown.length===1?'':'s'}`;
-  $('#fNote').textContent=!f.dist?np:c&&c.why?c.why:`${np} within ${f.dist} mi of ${c.label}${c.fallback?' (location is off)':''}`;
-  $('#rankList').innerHTML=shown.length?shown.map(rowHTML).join(''):`<li class="emptyrow">${L.length?(f.dist&&f.zip&&c&&c.why?esc(c.why):'No rated places match. Try a wider distance or another food type.'):`Nothing rated in the last ${P.window} days yet.`}</li>`;
-  document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===rankFilter?'true':'false'));
+  const where=!f.dist?` · last ${P.window} days`:c&&c.why?'':` within ${f.dist} mi of ${c.label}${c.fallback?' (location is off)':''}`;
+  const key=shown.some(p=>p.mine)?`<span class="ykey">${ytier(3)} = your rating</span>`:'';
+  $('#fNote').innerHTML=`<span>${f.dist&&c&&c.why?esc(c.why):esc(np+where)}</span>${key}${howLink}`;
+  $('#rankList').innerHTML=shown.length?shown.map(rowHTML).join(''):`<li class="emptyrow">${f.dist&&f.zip&&c&&c.why?esc(c.why):'No rated places match. Try a wider distance or another food type.'}</li>`;
 }
-
+/* "How scores work": the curve and the rating icons, out of the way of the list */
+function openHowScores(){
+  const L=S.list;
+  acctOpen(`<h2 class="h2">How scores work</h2>
+    <p>Every place gets a score. <b>3.00 is a normal spot</b>; higher is better. Scores are curved, so most places land near 3 and only a few go above 3.5.</p>
+    <p class="fine">Only ratings from the last ${state.params.window} days count, and newer ones count more. Everyone uses all the people who rated; Friends uses only you and your friends.</p>
+    <div class="howkey">${[4,3,2,1,0].map(t=>`<span>${ytier(t)} ${TIERS[t].label}</span>`).join('')}</div>
+    <p class="fine">These icons next to a name show how <b>you</b> rated it.</p>
+    ${L.length>2?`<h3 class="h3">Where places land</h3>${histSVG(L)}<p class="fine">Bars are places; the dotted line is the curve they’re aimed at.</p>`:''}
+    <div class="btns"><button class="btn" data-cmd="closeacct">Got it</button></div>`);
+}
 /* ---------- detail sheet ---------- */
 let lastFocus=null;
 function openDetail(key){
@@ -1684,28 +1706,28 @@ function openDetail(key){
   const sign=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(2);
   const cv=cover(key);
   const art=`<div class="dplate" style="--h:${m.hue}"><span class="pchip a">${esc(shortType(m.tl?(m.cuisine!=='Timeline stop'?m.cuisine:''):m.cuisine)||'Restaurant')}</span>${foodArt(m.cuisine+' '+m.name)}</div>`;
-  let html=`<div class="grab"></div>${cv?`<img class="cover" src="${cv}" alt="Your photo of ${esc(m.name)}">`:art}<div class="dhead"><div><p class="eyebrow">${esc(m.tl?m.sub:m.hood+' · '+m.cuisine)}</p><h2 class="cname">${esc(m.name)}</h2></div><button class="xbtn" data-cmd="close" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
+  let html=`<div class="grab"></div>${cv?`<img class="cover" src="${cv}" alt="Your photo of ${esc(m.name)}">`:art}<div class="dhead"><div>${m.tl?(m.tp&&m.tp.addr?`<p class="eyebrow">${esc(m.sub)}</p>`:''):`<p class="eyebrow">${esc(m.hood)}</p>`}<h2 class="cname">${esc(m.name)}</h2></div><button class="xbtn" data-cmd="close" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
   if(m.tl){const url=mapsUrl(m.tp);html+=`<div class="btns">${googleNamed(key)?'':`<button class="btn" data-cmd="name" data-key="${esc(key)}">${m.named?'Rename':'Name it'}</button>`}${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open in Maps ↗</a>`:''}</div>`}
   if(active){
     const pct=Math.max(1,Math.ceil(p.rank/L.length*100)),o=(isF()?G:F).by.get(ck);
-    html+=`<div class="dbig">${scoreHTML(p.score)}<p><b>${pct<=50?'Top '+pct+'%':'Bottom '+(101-pct)+'%'} ${isF()?'among friends':'in town'}</b> · #${p.rank} of ${L.length}<br>${p.n} rating${p.n===1?'':'s'} in the last ${P.window} days<span class="other">${isF()?'Global':'Friends'}: ${o&&o.n?o.score.toFixed(2):'no ratings yet'}</span></p></div>`;
+    const diff=o&&o.n&&Math.abs(o.score-p.score)>=.005;
+    html+=`<div class="dbig">${scoreHTML(p.score)}<p><b>#${p.rank} of ${L.length} ${isF()?'among friends':'nearby'}</b><br>${p.n} rating${p.n===1?'':'s'}${pct<=25?' · top '+pct+'%':''}${diff?`<span class="other">${isF()?'Everyone':'Friends'}: ${o.score.toFixed(2)}</span>`:''}<button class="lnk" data-cmd="howscores">How scores work</button></p></div>`;
     if(m.note||Math.abs(p.trend)>=.6)html+=`<p class="fine">${Math.abs(p.trend)>=.6?(p.trend>0?'<span class="trend up">▲ Rising.</span> ':'<span class="trend down">▼ Falling.</span> ')+`Ratings from the last 30 days average ${sign(p.trend)} tier versus the 30 to ${P.window} days before.`:''}${m.note?' Simulated story: '+esc(m.note)+'.':''}</p>`;
     if(p.problems){const rs=Object.entries(p.rc).sort((a,b)=>b[1]-a[1]).map(([k,c])=>`${esc(k)}${c>1?' ×'+c:''}`).join(', ');
       html+=`<p class="probbox"><b>${p.problems} of ${p.n} visits</b> in the last ${P.window} days had a problem${rs?`: ${rs}`:''}.</p>`}
   }else{
-    html+=`<p class="fine">${isF()?`None of your friends rated this in the last ${P.window} days. Switch to Global to see everyone’s ratings.`:`No ratings from the last ${P.window} days, so this place has no score right now.`}</p>`;
+    html+=`<p class="fine">${isF()?`None of your friends rated this in the last ${P.window} days. Switch Rankings to Everyone to see all ratings.`:`No ratings from the last ${P.window} days, so this place has no score right now.`}</p>`;
   }
   /* your own rating, right under the score */
   for(const myR of state.myReviews.filter(r=>canon(r.key)===ck).sort((a,b)=>b.ts-a.ts)){const ph=(myR.photo&&PH.mem.get(myR.photo))||(myR.photoPath&&photoUrls[myR.photoPath]);
     html+=`<div class="myrate"><div class="mrtop">${ytier(myR.tier)}<span>You said <b>${TIERS[myR.tier].label}</b> · ${ago(myR.ts).toLowerCase()}</span></div>${myR.tier===0&&myR.reasons?`<div class="rsn">${myR.reasons.map(esc).join(' · ')}</div>`:''}${myR.comment?`<p class="cmt">${esc(myR.comment)}</p>`:''}${ph&&ph!==cv?`<img src="${ph}" alt="Your photo">`:''}<button class="lnk warn delr" data-cmd="delrating" data-id="${esc(myR.id)}">Delete my rating</button></div>`}
-  if(active)html+=`<div>${distHTML(p,true)}<div class="legend">${TLIST.filter(t=>p.cw[t]>0).map(t=>`<span class="t${t}"><i></i>${TIERS[t].label} ${(p.cw[t]/p.sw*100).toFixed(0)}%</span>`).join('')}</div></div>`;
   if(p&&p.all.length){
     const shown=p.all.slice(0,30);
     const fs=new Set(state.friends);
-    html+=`<div><h3 class="h2">Ratings</h3><p class="fine">${isF()?'You and people you follow.':'Friends show by name. Everyone else is an anonymous diner.'} The bar is how much each rating counts today.</p><ul class="revs">${shown.map(r=>{const known=r.user==='me'||fs.has(r.user);const u=known?person(r.user):null;const st=world.ustats[r.user];const old=r.w<=0;const ph=(r.photo&&PH.mem.get(r.photo))||(r.photoPath&&photoUrls[r.photoPath]);
+    html+=`<div><h3 class="h2">Ratings</h3><p class="fine">${isF()?'You and your friends.':'Friends show by name; everyone else is “A diner”.'}</p><ul class="revs">${shown.map(r=>{const known=r.user==='me'||fs.has(r.user);const u=known?person(r.user):null;const st=world.ustats[r.user];const old=r.w<=0;const ph=(r.photo&&PH.mem.get(r.photo))||(r.photoPath&&photoUrls[r.photoPath]);
       const who=known?esc(u.name):'A diner';
-      const meta2=`Ate there ${ago(r.ts).toLowerCase()} · <span class="verified">${ICON.check}Verified visit</span>${!known&&st?` · ${st.n} ratings · ${st.grader}`:''}`;
-      return `<li class="${old?'old':''}">${known?avHTML(r.user):`<span class="av anon" aria-hidden="true">${ICON.anon}</span>`}<div><div class="who">${who} ${tierHTML(r.tier)}</div><div class="when">${meta2}</div>${r.tier===0&&r.reasons?`<div class="rsn">${r.reasons.map(esc).join(' · ')}</div>`:''}${r.comment?`<p class="cmt">${esc(r.comment)}</p>`:''}${ph?`<img class="thumb" src="${ph}" alt="">`:''}</div><div class="wt">${old?'expired':Math.round(r.w*100)+'%'}<span class="bar"><i style="width:${(r.w*100).toFixed(1)}%"></i></span></div></li>`}).join('')}</ul>${p.all.length>30?`<p class="fine">and ${p.all.length-30} older ratings</p>`:''}</div>`;
+      const meta2=`Ate there ${ago(r.ts).toLowerCase()} · <span class="verified">${ICON.check}Verified visit</span>${!known&&st?` · ${st.n} ratings`:''}`;
+      return `<li class="${old?'old':''}">${known?avHTML(r.user):`<span class="av anon" aria-hidden="true">${ICON.anon}</span>`}<div><div class="who">${who} ${tierHTML(r.tier)}</div><div class="when">${meta2}</div>${r.tier===0&&r.reasons?`<div class="rsn">${r.reasons.map(esc).join(' · ')}</div>`:''}${r.comment?`<p class="cmt">${esc(r.comment)}</p>`:''}${ph?`<img class="thumb" src="${ph}" alt="">`:''}</div></li>`}).join('')}</ul>${p.all.length>30?`<p class="fine">and ${p.all.length-30} older ratings</p>`:''}</div>`;
   }
   $('#sheetBody').innerHTML=html;
   openKey=key;
@@ -3061,7 +3083,7 @@ document.addEventListener('click',e=>{
     if(i>=0)state.friends.splice(i,1);else state.friends.push(id);
     save();refresh();toast(i>=0?`Removed ${u.name} from friends`:`${u.name} added. Their ratings now count in Friends scores.`);return}
   if(t.dataset.act)return swipeTop(t.dataset.act);
-  if(t.dataset.filter){rankFilter=t.dataset.filter;return renderRank()}
+  if(t.dataset.filter){const v=t.dataset.filter;if(v==='list')rankFilter='list';else{rankFilter='all';state.mode=v==='friends'?'friends':'global';save();return refresh()}return renderRank()}
   if(t.dataset.open)return openDetail(t.dataset.open);
   switch(t.dataset.cmd){
     case 'import':closeMenu();openPicker($('#file'));break;
@@ -3084,6 +3106,7 @@ document.addEventListener('click',e=>{
       loadTilesFor(tp?[tp]:[]).then(()=>{matchPlaces([k]);save();refresh()});save();refresh();toast('Restored. Re-import your Timeline if its visits don’t appear.');break}
     case 'signin':showSignIn(null,($('#email')||{}).value);break;
     case 'closeacct':closeAcct();break;
+    case 'howscores':openHowScores();break;
     case 'fmore':{const r=$('#fMore'),open=r.hidden;r.hidden=!open;t.setAttribute('aria-expanded',open?'true':'false');if(open)$('#fName').focus();break}
     case 'delrating':{
       if(t.dataset.armed&&Date.now()-+t.dataset.armed<4000){deleteRating(t.dataset.id);break}
