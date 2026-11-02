@@ -1695,6 +1695,7 @@ function rowHTML(p){
 const howLink=`<button class="lnk" data-cmd="howscores">How scores work</button>`;
 function renderRank(){
   const L=S.list, P=state.params;
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===state.mode?'true':'false'));   /* the map's Everyone / Friends buttons */
   document.querySelectorAll('.win').forEach(e=>e.textContent=P.window);
   const seg=rankFilter==='list'?'list':isF()?'friends':'all';
   document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===seg?'true':'false'));
