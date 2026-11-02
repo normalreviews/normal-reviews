@@ -2332,9 +2332,10 @@ function renderGps(){
       :`<b>On.</b> ${GPS.found||0} restaurant visit${GPS.found===1?'':'s'} found${GPS.lastFound?`, latest ${esc(t(GPS.lastFound))}`:''}.${VDS&&VDS.phase==='here'?' You’re at a restaurant now.':''} If visits get missed, tap Battery settings and set battery use to Unrestricted. Recent checks (times only, no places):`;
     return;
   }
-  $('#gpsStatus').innerHTML=on
-    ?`<b>On.</b> ${GPS.found||0} restaurant visit${GPS.found===1?'':'s'} found${GPS.lastFound?`, latest ${esc(t(GPS.lastFound))}`:''}. ${GPS.skipped||0} other stops ignored and forgotten.${GPS.lastFix?` Last location check ${esc(t(GPS.lastFix))}.`:' Waiting for the first location.'}`
-    :'Off. Turn it on and your phone notices restaurant visits on its own, no Timeline export needed.';
+  /* the app shell on this phone has no visit detector (an old install): say so, and show what the phone offers */
+  let diag='';try{const C=window.Capacitor||{};diag=`Phone offers: ${esc(Object.keys(C.Plugins||{}).join(', ')||'none')} · list: ${esc((C.PluginHeaders||[]).map(h=>h.name).join(', ')||'none')} · bridge call: ${typeof C.nativePromise==='function'?'yes':'no'}`}catch(e){diag='Phone check failed: '+esc(e.message)}
+  const apk=/^dev\./.test(location.hostname)?'https://github.com/normalreviews/normal-reviews/releases/download/android-dev/normal-reviews-dev.apk':'https://github.com/normalreviews/normal-reviews/releases/download/android-latest/normal-reviews.apk';
+  $('#gpsStatus').innerHTML=`<b>Update needed.</b> This copy of the app is older than the visit detector, so it only checks while the app is open. Install the latest app over this one (don’t uninstall first; that would erase what’s saved on the phone), then come back here and tap Turn on.<br><a class="btn primary" style="margin-top:10px;display:inline-block" href="${apk}">Download the latest app</a><br><small class="fine">${diag}</small>`;
 }
 async function gpsToggle(){
   if(VD){
