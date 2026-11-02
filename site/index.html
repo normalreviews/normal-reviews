@@ -87,6 +87,30 @@ main{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
 .h2{font-family:var(--f-display);font-weight:700;font-size:18px;line-height:1.2;letter-spacing:-.015em;margin:0;text-wrap:balance}
 .lede{color:var(--muted);margin:6px 0 0;font-size:14px;max-width:60ch}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0}
+details.panel > summary,.byCode > summary,details.howto > summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+details > summary::-webkit-details-marker{display:none}
+details.panel > summary::after,.byCode > summary::after,details.howto > summary::after{content:'';width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-left:auto;transition:transform .15s}
+details[open] > summary::after{transform:rotate(-135deg)}
+details.panel:not([open]){gap:0}
+.byCode,details.howto{display:flex;flex-direction:column;gap:10px}
+.byCode > summary,details.howto > summary{font:600 14px var(--f-body);color:var(--accent);padding:4px 0}
+.byCode[open],details.howto[open]{gap:12px}
+.byCode > *:not(summary),details.howto > *:not(summary){margin-top:10px}
+.h3{margin:0;font:700 15px/1.25 var(--f-body)}
+.dlist{list-style:none;margin:0;padding:0}
+.dlist li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.dlist li:last-child{border-bottom:0}
+.dlist li > div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.dlist b{font-size:14.5px;font-weight:650}
+.dlist span{font-size:12.5px;color:var(--muted);line-height:1.35}
+.dlist .btn{flex:none}
+.tester h3{margin:8px 0 0}
+#reportPanel{display:flex;flex-direction:column;gap:10px}
+.people li.frow{display:block}
+.frow .fopen{appearance:none;border:0;background:none;width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;padding:2px 0;cursor:pointer;color:var(--ink);font:inherit}
+.frow .fopen > span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.frow .chev{width:18px;height:18px;color:var(--muted)}
+.unfr{list-style:none;padding:18px 0 6px;text-align:center}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .panel p{margin:0}
 .fine{font-size:12.5px;color:var(--muted)}
@@ -617,70 +641,42 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
     <section class="view gutter" id="v-friends" aria-label="Friends" hidden>
       <div>
-        <p class="eyebrow" id="friendsEyebrow">Just you for now</p>
         <h1 class="h1">Friends</h1>
         <p class="lede" id="friendsLede"></p>
       </div>
       <div class="panel" id="signinPanel" hidden>
-        <h2 class="h2">Rate with your testers</h2>
-        <p class="fine">Sign in with your email to share ratings with friends. Your Timeline and visits stay on this phone; only restaurants you rate are shared.</p>
+        <h2 class="h2">Rate with friends</h2>
+        <p class="fine">Sign in to share ratings with friends. Only restaurants you rate are shared.</p>
         <div class="btns"><button class="btn primary" data-cmd="signin">Sign in</button></div>
       </div>
-      <div class="panel" id="acctPanel" hidden>
-        <div class="listhead"><h2 class="h2">Your account</h2><span class="fine" id="acctEmail"></span></div>
-        <div class="codebox"><div><span class="fine">Your friend code</span><b id="myCode">—</b></div><button class="btn" data-cmd="copycode">Copy</button></div>
-        <form id="addFriendForm" class="addf"><input id="friendCode" placeholder="Friend’s code" maxlength="10" autocomplete="off" autocapitalize="characters" aria-label="Friend’s code"><button class="btn primary">Add friend</button></form>
-        <div class="btns"><button class="btn ghost" data-cmd="renameme">Change my name</button><button class="btn ghost" data-cmd="signout">Sign out</button><button class="btn danger" data-cmd="deleteshared" id="delSharedBtn">Delete my shared data</button></div>
-        <p class="fine"><a href="privacy.html" target="_blank" rel="noopener">What’s shared and what isn’t</a></p>
+      <div class="panel" id="friendsPanel"><div class="listhead"><h2 class="h2">Your friends</h2><span class="fine" id="followCount"></span></div>
+        <ul class="people" id="people"></ul>
+        <details class="byCode" id="acctPanel" hidden><summary>Already on Normal Reviews? Add by friend code</summary>
+          <div class="codebox"><div><span class="fine">Your friend code</span><b id="myCode">—</b></div><button class="btn" data-cmd="copycode">Copy</button></div>
+          <form id="addFriendForm" class="addf"><input id="friendCode" placeholder="Their code" maxlength="10" autocomplete="off" autocapitalize="characters" aria-label="Friend’s code"><button class="btn">Add friend</button></form>
+        </details>
       </div>
       <div class="panel" id="invitePanel" hidden>
-        <div class="listhead"><h2 class="h2">Invite someone</h2><span class="fine" id="betaSpots"></span></div>
-        <p class="fine">Make an invite and send the message however you like: text, WhatsApp, email. The code works once, for 14 days. The link gives Android phones the app and opens the web app on iPhones. They choose their own PIN, and you become friends automatically.</p>
+        <div class="listhead"><h2 class="h2">Invite someone new</h2><span class="fine" id="betaSpots"></span></div>
+        <p class="fine">Send a one-time link by text or email. They pick a PIN and you become friends.</p>
         <div class="btns"><button class="btn primary" data-cmd="invite" type="button">Create invite</button></div>
         <div id="inviteResult"></div>
         <ul class="people" id="inviteList"></ul>
       </div>
       <div class="panel"><div class="listhead"><h2 class="h2">From friends</h2><span class="fine" id="feedNote"></span></div><ul class="feed" id="feed"></ul></div>
-      <div class="panel"><div class="listhead"><h2 class="h2">Your friends</h2><span class="fine" id="followCount"></span></div><ul class="people" id="people"></ul></div>
       <div class="panel" id="suggestPanel"><div class="listhead"><h2 class="h2">People you may know</h2><span class="fine">simulated</span></div>
         <p class="fine">In the real app you add friends by username or invite link. Strangers stay anonymous everywhere else.</p>
         <ul class="people" id="suggest"></ul></div>
     </section>
 
     <section class="view gutter" id="v-logic" aria-label="Logic" hidden>
-      <div>
-        <h1 class="h1">Settings</h1>
-        <p class="lede">Your account, your Timeline and what’s saved on this phone.</p>
-      </div>
+      <h1 class="h1">Settings</h1>
 
       <div class="panel" id="setAcct" hidden>
         <h2 class="h2">Account</h2>
         <p class="status" id="setAcctLine"></p>
         <div class="btns" id="setAcctBtns"></div>
-      </div>
-
-      <div class="panel">
-        <h2 class="h2">Your Timeline</h2>
-        <ol class="steps">
-          <li><b>Android:</b> Settings → Location → Location services → Timeline → <b>Export Timeline data</b>.</li>
-          <li><b>iPhone:</b> Google Maps → your profile picture → Settings → Personal content → <b>Export Timeline data</b>.</li>
-          <li>Tap Import below and pick the file. Stops from the last <span class="qd">90</span> days land in your swipe deck.</li>
-        </ol>
-        <div class="btns">
-          <label class="btn primary" for="file" role="button" tabindex="0">Import Timeline file</label>
-        </div>
-        <label class="check" for="mealOnly"><input type="checkbox" id="mealOnly"> Only stops around meal times (7–10:30am, 11am–3pm, 5–10:30pm)</label>
-        <label class="check" for="bayOnly"><input type="checkbox" id="bayOnly"> Only stops in California, Oregon, Washington and Nevada; trips elsewhere are ignored</label>
-        <p class="status" id="importStatus"></p>
-        <p class="fine">The file is read on this phone and nothing is uploaded. Restaurants are named from an open map of places (Overture Maps and OpenStreetMap). The app downloads that map only for the areas you’ve been, about 25 km at a time. Each stop’s Google place ID is named by Google once (shared with other testers as a link to our open map, never with your name). Otherwise a stop counts only if you stayed 10+ minutes and a restaurant is within 8 m of it; everything else goes to Skipped places, where you can restore it. Home and work are skipped automatically. Re-import anytime; visits you already have are not duplicated.</p>
-      </div>
-
-      <div class="panel" id="reportPanel" hidden>
-        <div class="listhead"><h2 class="h2">Match report</h2><span class="fine">last import or re-check</span></div>
-        <p class="status" id="reportSum"></p>
-        <div class="btns"><button class="btn" data-cmd="recheck">Re-check matches</button></div>
-        <ul class="report" id="reportList"></ul>
-        <p class="fine">Re-check uses what this phone and the shared links already know, so it rarely needs Google. Restaurants marked “Google (not on our map yet)” can be kept with Name it.</p>
+        <p class="fine"><a href="privacy.html" target="_blank" rel="noopener">What’s shared and what isn’t</a></p>
       </div>
 
       <div class="panel" id="gpsPanel" hidden>
@@ -688,24 +684,57 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <p class="status" id="gpsStatus"></p>
         <div class="btns"><button class="btn" id="gpsBtn" data-cmd="gps">Turn on</button><button class="btn" id="gpsFix" data-cmd="gpsperms" hidden>Fix permissions</button><button class="btn" id="gpsBatt" data-cmd="gpsbatt" hidden>Battery settings</button></div>
         <ul class="vdlog" id="vdLog" hidden></ul>
-        <p class="fine" id="gpsAbout">When you stay somewhere 10+ minutes, your phone checks it against the restaurant map. Restaurant visits become cards; every other stop is forgotten right away. When 5 visits are waiting, you get a reminder (at most once a day). No location history is kept on the phone or sent anywhere.</p>
+        <p class="fine" id="gpsAbout">Stay at a restaurant 10+ minutes and it becomes a card. Every other stop is forgotten right away, and no location history is kept.</p>
+      </div>
+
+      <div class="panel">
+        <h2 class="h2">Import Google Timeline</h2>
+        <p class="fine">Rate past visits from your Google Timeline. The file is read on this phone; nothing is uploaded.</p>
+        <div class="btns">
+          <label class="btn" for="file" role="button" tabindex="0">Import Timeline file</label>
+        </div>
+        <p class="status" id="importStatus"></p>
+        <details class="howto"><summary>How to export it, and options</summary>
+          <ol class="steps">
+            <li><b>Android:</b> Settings → Location → Location services → Timeline → <b>Export Timeline data</b>.</li>
+            <li><b>iPhone:</b> Google Maps → your profile picture → Settings → Personal content → <b>Export Timeline data</b>.</li>
+            <li>Tap Import and pick the file. Stops from the last <span class="qd">90</span> days become cards.</li>
+          </ol>
+          <label class="check" for="mealOnly"><input type="checkbox" id="mealOnly"> Only stops around meal times (7–10:30am, 11am–3pm, 5–10:30pm)</label>
+          <label class="check" for="bayOnly"><input type="checkbox" id="bayOnly"> Only stops in California, Oregon, Washington and Nevada</label>
+          <p class="fine">Restaurants are named from an open map of places (Overture Maps and OpenStreetMap), downloaded only for the areas you’ve been. A stop counts if you stayed 10+ minutes within 8 m of a restaurant; home and work are skipped. Re-importing never makes duplicates.</p>
+        </details>
       </div>
 
       <div class="panel">
         <div class="listhead"><h2 class="h2">Skipped places</h2><span class="fine" id="skipCount"></span></div>
-        <p class="fine">Stops the app decided weren’t meals. Tap Restore if one was a restaurant; it won’t be skipped again.</p>
+        <p class="fine">Stops the app decided weren’t meals. Tap Restore if one was a restaurant.</p>
         <ul class="people" id="skipList"></ul>
       </div>
 
       <div class="panel">
-        <h2 class="h2">Data on this phone</h2>
-        <div class="statgrid" id="stats"></div>
-        <div class="btns">
-          <button class="btn" data-cmd="demo" id="demoBtn">Demo crowd: off</button>
-          <button class="btn danger" data-cmd="reset" id="resetBtn">Erase my ratings</button>
-          <button class="btn danger" data-cmd="wipe" id="wipeBtn">Erase everything</button>
-        </div>
+        <h2 class="h2">Delete</h2>
+        <ul class="dlist">
+          <li id="delSharedRow"><div><b>Delete my shared data</b><span>Removes your ratings and name from everyone’s scores and signs you out. This phone keeps its copy.</span></div><button class="btn danger" data-cmd="deleteshared" id="delSharedBtn">Delete</button></li>
+          <li id="clearRow"><div><b>Sign out and clear this phone</b><span>Empties this phone. Your shared ratings stay in your account.</span></div><button class="btn danger" data-cmd="signoutclear">Clear</button></li>
+          <li><div><b>Erase my ratings</b><span>Deletes your ratings here and from everyone’s scores. Your visits stay.</span></div><button class="btn danger" data-cmd="reset" id="resetBtn">Erase</button></li>
+          <li><div><b>Erase everything</b><span>Deletes everything on this phone and everything you shared.</span></div><button class="btn danger" data-cmd="wipe" id="wipeBtn">Erase all</button></li>
+        </ul>
       </div>
+
+      <details class="panel tester">
+        <summary><h2 class="h2">Tester tools</h2></summary>
+        <div id="reportPanel" hidden>
+          <div class="listhead"><h3 class="h3">Match report</h3><span class="fine">last import or re-check</span></div>
+          <p class="status" id="reportSum"></p>
+          <div class="btns"><button class="btn" data-cmd="recheck">Re-check matches</button></div>
+          <ul class="report" id="reportList"></ul>
+          <p class="fine">Re-check uses what this phone and the shared links already know, so it rarely needs Google.</p>
+        </div>
+        <h3 class="h3">Data on this phone</h3>
+        <div class="statgrid" id="stats"></div>
+        <div class="btns"><button class="btn" data-cmd="demo" id="demoBtn">Demo crowd: off</button></div>
+      </details>
     </section>
   </main>
 
@@ -1250,7 +1279,7 @@ function openMenu(vid,view){
     html=head+`<div class="mlist">
       ${dr.photo?item('mrmphoto',ICON.trash,'Remove photo','Take the photo off this visit'):''}
       ${item('mproblem',ICON.warn,'There was a problem','Rate it 0 and flag what went wrong','warn')}
-      ${item('mskip',ICON.skip,'Skip for now','Move to the back of your deck')}
+      ${item('mskip',ICON.skip,'Skip for now','See it again later')}
       ${item('mnomeal',ICON.nope,'I didn’t visit','Remove this visit without rating','warn')}
     </div><button class="btn ghost" data-cmd="mclose" style="align-self:center">Cancel</button>`;
   }
@@ -1421,7 +1450,7 @@ function undo(){
       if(r.comment||r.photo)state.drafts[r.visitId]={comment:r.comment||undefined,photo:r.photo||undefined};
       if(r.wasSkipped)state.skipped[r.visitId]=r.wasSkipped;
       toast('Rating undone')}
-  }else if(a.type==='hide'){state.hidden=state.hidden.filter(k=>k!==a.key);toast('Back in your deck')}
+  }else if(a.type==='hide'){state.hidden=state.hidden.filter(k=>k!==a.key);toast('Back in your cards')}
   else if(a.type==='skip'){delete state.skipped[a.id];toast('Back on top')}
   else if(a.type==='dismiss'){state.dismissed=state.dismissed.filter(x=>x!==a.id);toast('Visit restored')}
   save();refresh();
@@ -1626,9 +1655,11 @@ function renderMyList(){
     }
     if(part)html+=`<li class="lcat"><h3>${esc(cat)}</h3>${part}</li>`;
   }
+  $('#rankList').dataset.who=who;
   $('#fNote').textContent=mine?(anyOrderable?'Drag ⋮⋮ to put your favorite on top. It nudges your scores a little, and friends see your order.':'Your places by food type. Scores are everyone’s.')
     :`${name}’s places by food type, in the order they put them.`;
-  $('#rankList').innerHTML=html||`<li class="emptyrow">${all.length?'Nothing matches. Try another food type.':mine?`You haven’t rated anything in the last ${state.params.window} days yet.`:`${esc(name)} hasn’t rated anything in the last ${state.params.window} days.`}</li>`;
+  $('#rankList').innerHTML=(html||`<li class="emptyrow">${all.length?'Nothing matches. Try another food type.':mine?`You haven’t rated anything in the last ${state.params.window} days yet.`:`${esc(name)} hasn’t rated anything in the last ${state.params.window} days.`}</li>`)
+    +(!mine&&sb?`<li class="unfr"><button class="lnk warn" data-unfriend="${esc(who)}">Remove ${esc(name)} from friends</button></li>`:'');
 }
 /* dragging by the ⋮⋮ handle, within one group */
 let drag=null;
@@ -1741,33 +1772,31 @@ function closeDetail(){$('#sheet').hidden=true;if(lastFocus&&lastFocus.focus)las
 function renderFriends(){
   const shared=!!sb, signed=!!(sb&&me);
   $('#signinPanel').hidden=!(shared&&!signed);
-  $('#acctPanel').hidden=!signed;
+  $('#acctPanel').hidden=!signed;$('#friendsPanel').hidden=!signed&&!state.demo;
   $('#invitePanel').hidden=!signed;
   $('#suggestPanel').hidden=shared;
-  if(signed){$('#myCode').textContent=(myProfile&&myProfile.friend_code)||'—';$('#acctEmail').textContent=me.email||''}
+  if(signed)$('#myCode').textContent=(myProfile&&myProfile.friend_code)||'—';
   const fs=new Set(state.friends);
-  const mine=state.myReviews.map(r=>({user:'me',key:r.key,tier:r.tier,ts:r.ts,comment:r.comment,reasons:r.reasons,hidden:state.hidden.includes(r.key)})).filter(r=>!r.hidden);
-  const feed=world.reviews.filter(r=>fs.has(r.user)&&NOW-r.ts<30*DAY).concat(mine).sort((a,b)=>b.ts-a.ts).slice(0,25);
-  $('#feedNote').textContent=signed?'you and friends, last 30 days':state.demo?'last 30 days':'your ratings, last 30 days';
+  /* only friends here: your own ratings are on Rankings → My list */
+  const feed=world.reviews.filter(r=>fs.has(r.user)&&NOW-r.ts<30*DAY).sort((a,b)=>b.ts-a.ts).slice(0,25);
+  $('#feedNote').textContent='last 30 days';
   $('#feed').innerHTML=feed.length?feed.map(r=>{const u=person(r.user),m=meta(r.key);return `<li><button class="feedbtn" data-open="${esc(r.key)}">${avHTML(r.user)}<span class="txt"><b>${esc(u.name)}</b> rated <b>${esc(m.name)}</b><span class="when">Ate there ${ago(r.ts).toLowerCase()}${m.hood?' · '+esc(m.hood):''}</span>${r.tier===0&&r.reasons?`<span class="rsn" style="display:block">${r.reasons.map(esc).join(' · ')}</span>`:''}${r.comment?`<span class="cmt" style="display:block">${esc(r.comment)}</span>`:''}</span>${tierHTML(r.tier)}</button></li>`}).join('')
-    :`<li class="emptyrow">${signed?'Nothing yet. Rate a visit, or add a friend with their code.':'Follow a few people below and their ratings show up here.'}</li>`;
+    :`<li class="emptyrow">${signed||state.demo?'Nothing from friends in the last 30 days.':'Sign in and add friends to see what they rate.'}</li>`;
   $('#followCount').textContent=`${state.friends.length} friend${state.friends.length===1?'':'s'}`;
   const W=state.params.window;
   const stats=world.users.map(u=>{const rs=world.reviews.filter(r=>r.user===u.id&&NOW-r.ts<=W*DAY);const best=rs.slice().sort((a,b)=>b.tier-a.tier||b.ts-a.ts)[0];return {u,n:rs.length,best,f:fs.has(u.id)}})
     .sort((a,b)=>b.n-a.n);
-  const li=s=>{const g=(world.ustats[s.u.id]||{}).grader||'Calibrated';
-    const btn=shared?`<button class="follow" data-unfriend="${esc(s.u.id)}" aria-label="Remove ${esc(s.u.name)} from friends">Remove</button>`:`<button class="follow" data-follow="${s.u.id}" aria-pressed="${s.f}">${s.f?'Friends':'Add'}</button>`;
-    return `<li>${avHTML(s.u.id)}<div><div class="nm">${esc(s.u.name)}</div><div class="meta sub2">${s.n?`${s.n} ratings · favorite: ${esc(meta(s.best.key).name)}`:'No recent ratings'} · <span class="grader">${g}</span></div></div>${btn}</li>`};
+  const chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  const li=s=>{
+    if(s.f)return `<li class="frow"><button class="fopen" data-flist="${esc(s.u.id)}">${avHTML(s.u.id)}<span><span class="nm">${esc(s.u.name)}</span><span class="meta sub2">${s.n?`${s.n} rating${s.n===1?'':'s'}${s.best?' · favorite: '+esc(meta(s.best.key).name):''}`:'No recent ratings'}</span></span>${chev}</button></li>`;
+    return `<li>${avHTML(s.u.id)}<div><div class="nm">${esc(s.u.name)}</div><div class="meta sub2">${s.n?`${s.n} ratings`:'No recent ratings'}</div></div><button class="follow" data-follow="${s.u.id}" aria-pressed="false">Add</button></li>`};
   const fr=stats.filter(s=>s.f), sg=stats.filter(s=>!s.f);
-  $('#people').innerHTML=fr.length?fr.map(li).join(''):`<li class="emptyrow">${signed?'No friends yet. Send someone your friend code, or type theirs above.':shared?'Sign in to add friends.':state.demo?'No friends yet. Add a few below.':'No friends yet. Real friends arrive with the shared version of the app.'}</li>`;
+  $('#people').innerHTML=fr.length?fr.map(li).join(''):`<li class="emptyrow">${signed?'No friends yet. Create an invite below.':shared?'Sign in to add friends.':state.demo?'No friends yet. Add a few below.':'No friends yet.'}</li>`;
   $('#suggest').innerHTML=sg.length?sg.map(li).join(''):'<li class="emptyrow">Turn on the demo crowd under the settings gear to preview how friends work.</li>';
-  $('#friendsEyebrow').textContent=signed?'Beta':state.demo?'Demo crowd on':'Just you for now';
-  $('#friendsLede').textContent=signed
-    ?'Friends see each other’s names, ratings and comments. In Global view everyone else appears as an anonymous diner. Your Timeline never leaves your phone.'
-    :shared?'Sign in to rate together with your testers. Until then the app works just for you.'
-    :state.demo
-    ?'The demo crowd is 36 generated people with fake ratings, for showing how the app works. Friends see each other’s names; in Global view everyone else is an anonymous diner.'
-    :'This version is just you. Your ratings are real and stay on this phone. The shared version will let real friends rate into the same pool.';
+  $('#friendsLede').textContent=signed||state.demo
+    ?'Friends see your name with your ratings. Everyone else sees “A diner”.'
+    :shared?'Sign in to rate together with your testers.'
+    :'This version is just you. Your ratings stay on this phone.';
 }
 
 /* ---------- map: MapLibre (open source) with free OpenFreeMap street tiles ---------- */
@@ -1863,7 +1892,7 @@ function renderLogic(){
   $('#demoBtn').hidden=!!sb;
   $('#mealOnly').checked=!!state.mealOnly;
   $('#bayOnly').checked=!!state.bayOnly;
-  $('#stats').innerHTML=`<div><b>${state.myReviews.length}</b><span>your ratings</span></div><div><b>${tl}</b><span>Timeline visits</span></div><div><b>${S.list.length}</b><span>ranked places</span></div><div><b>${S.active}</b><span>active ratings</span></div><div><b>${S.expired}</b><span>expired ratings</span></div><div><b>${world.users.length}</b><span>simulated people</span></div>`;
+  $('#stats').innerHTML=`<div><b>${state.myReviews.length}</b><span>your ratings</span></div><div><b>${tl}</b><span>Timeline visits</span></div><div><b>${S.list.length}</b><span>ranked places</span></div><div><b>${S.active}</b><span>active ratings</span></div><div><b>${S.expired}</b><span>expired ratings</span></div>${state.demo?`<div><b>${world.users.length}</b><span>simulated people</span></div>`:''}`;
   const I=state.importInfo;
   $('#importStatus').innerHTML=I?`Last import ${esc(new Date(I.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}: <b>${I.found}</b> stops kept, ${I.added} new. Skipped ${I.homework} home or work, ${I.short} shorter than ${I.minDwell} min, ${I.old} too old${I.away?`, ${I.away} outside the covered states`:''}${I.off?`, ${I.off} outside meal times`:''}${I.notfood?`, ${I.notfood} not food (hidden)`:''}.${I.enriched?` ${I.named} restaurant names added from Google.`:''}${I.rc?` Restaurants: <b>${I.rc.gl}</b> named by Google or shared links, ${I.rc.gonly} by Google only (not on our map yet), ${I.rc.map} from our map${I.rc.mine?`, ${I.rc.mine} named by you`:''}${I.rc.ask?`, ${I.rc.ask} need you to pick`:''}. <b>${I.rc.skip}</b> skipped as not restaurants. <b>${I.rc.cards}</b> have cards to rate; the Match report says why the rest don’t.`
   :`${I.osm?` <b>${I.osmAuto||0}</b> named from the restaurant map${I.osmAsk?`, ${I.osmAsk} need you to pick`:''}.`:''}${I.listOther?` <b>${I.listOther}</b> skipped: no restaurant within 8 m, or a store, gym or other place was closer.`:''}`}${I.future?` ${I.future} stop${I.future===1?'':'s'} dated in the future ignored.`:''}${I.tilesOk===false?' Some map areas didn’t download; they’ll be checked next time you open the app.':''}${I.newest?` Newest visit in the file: ${esc(new Date(I.newest).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}))}.`:''}${I.errs&&I.errs.length?'<br>'+I.errs.map(esc).join('<br>'):''}`:'';
@@ -2404,7 +2433,7 @@ function avAdd(p){
   const inGroup=state.visits.filter(v=>visitGroup(v)===g);
   state.dismissed=state.dismissed.filter(id=>!inGroup.some(v=>v.id===id));     /* adding it by hand undoes "I didn't visit" */
   const dup=inGroup[0];
-  if(dup){dup.pin=Date.now();save();closeMenu();go('rate');renderDeck();toast(`${name} that day is in your deck. It’s on top now.`);return}
+  if(dup){dup.pin=Date.now();save();closeMenu();go('rate');renderDeck();toast(`${name} that day is already a card. It’s on top now.`);return}
   if(manualAllowance().left<=0){closeMenu();openAdd();return}
   state.visits.push({id:key+'@'+start,key,start,end,source:'manual',pin:Date.now()});
   save();closeMenu();go('rate');renderDeck();refreshLater();toast(`Added ${name}. Swipe to rate it.`);
@@ -2514,7 +2543,7 @@ async function importFiles(files){
   state.importInfo={at:Date.now(),found:kept,added,short,homework,old,away,off,notfood,named,enriched,newest,future,minDwell:P.minDwell,errs,osmAuto:om.auto,osmAsk:om.ask,osm:!!TM,listOther:om.skip||0,tilesOk,area:TM&&TM.area,rc};
   save();refresh();
   const q=deckVisits().length;
-  if(keep.size){toast(`${q} visit${q===1?'':'s'} waiting in your deck.`);go('rate')}
+  if(keep.size){toast(`${q} visit${q===1?'':'s'} waiting to rate.`);go('rate')}
   else{toast(errs.length?errs[0]:'No visits from the last '+Math.max(P.window,P.queueDays)+' days in that file.');go('logic')}
 }
 
@@ -2631,11 +2660,13 @@ async function finishSignIn(){
 /* account panel on the Settings screen */
 function renderAcct(){
   const box=$('#setAcct');if(!box)return;
-  box.hidden=!SHARED;if(!SHARED)return;
+  box.hidden=!SHARED;
+  {const signed=!!(sb&&me);$('#delSharedRow').hidden=!signed;$('#clearRow').hidden=!signed}
+  if(!SHARED)return;
   if(sb&&me){
     const nm=myProfile&&myProfile.display_name;
     $('#setAcctLine').innerHTML=`Signed in as <b>${esc(nm||'you')}</b> · ${esc(me.email||'')}`;
-    $('#setAcctBtns').innerHTML=`<button class="btn" data-cmd="changepin">Change PIN</button><button class="btn" data-cmd="signout">Sign out</button><button class="btn danger" data-cmd="signoutclear">Sign out and clear this phone</button>`;
+    $('#setAcctBtns').innerHTML=`<button class="btn" data-cmd="renameme">Change my name</button><button class="btn" data-cmd="changepin">Change PIN</button><button class="btn" data-cmd="signout">Sign out</button>`;
   }else{
     $('#setAcctLine').textContent='Not signed in. Your ratings stay on this phone until you sign in.';
     $('#setAcctBtns').innerHTML=`<button class="btn primary" data-cmd="signin">Sign in</button>`;
@@ -3068,8 +3099,11 @@ document.addEventListener('click',e=>{
   const rc=e.target.closest('[data-reason]');
   if(rc){rc.setAttribute('aria-pressed',rc.getAttribute('aria-pressed')==='true'?'false':'true');return}
   const t=e.target.closest('[data-tab],[data-act],[data-open],[data-cmd],[data-filter],[data-mode],[data-follow],[data-mapfilter]');
+  const fl=e.target.closest('[data-flist]');
+  if(fl){state.find.who=fl.dataset.flist;state.find.cat='all';state.find.name='';rankFilter='list';autoLand=false;save();go('rankings');return}
   const uf=e.target.closest('[data-unfriend]');
-  if(uf&&sb){sb.rpc('remove_friend',{other:uf.dataset.unfriend}).then(({error})=>{if(error)toast(friendly(error));else{toast('Removed from friends');pullShared(true)}});return}
+  if(uf&&sb){if(Date.now()-(uf._armed||0)>4000){uf._armed=Date.now();const was=uf.textContent;uf.textContent='Tap again to remove';setTimeout(()=>{uf.textContent=was},4000);return}
+    sb.rpc('remove_friend',{other:uf.dataset.unfriend}).then(({error})=>{if(error)toast(friendly(error));else{toast('Removed from friends');state.find.who='me';pullShared(true)}});return}
   if(!t){if(e.target.id==='sheet')closeDetail();else if(e.target.id==='menu')closeMenu();else if(e.target.id==='acct')closeAcct();return}
   if(t.dataset.tab){autoLand=false;return go(t.dataset.tab)}
   if(t.dataset.mapfilter){state.mapFilter=t.dataset.mapfilter;save();renderMap();return}
@@ -3143,7 +3177,7 @@ document.addEventListener('click',e=>{
     case 'notnow':state.noSignIn=true;save();closeAcct();toast('You can sign in anytime in Settings.');break;
     case 'signout':if(sb){state.noSignIn=true;save();sb.auth.signOut().then(()=>toast('Signed out. Your visits and ratings stay on this phone.'))}break;
     case 'signoutclear':{
-      if(Date.now()-clearArmed>4000){clearArmed=Date.now();t.textContent='Tap again to sign out and clear';setTimeout(()=>{t.textContent='Sign out and clear this phone'},4000);break}
+      if(Date.now()-clearArmed>4000){clearArmed=Date.now();t.textContent='Tap again';setTimeout(()=>{t.textContent='Clear'},4000);break}
       clearArmed=0;state.noSignIn=true;save();
       const done=()=>{clearPhone();state.noSignIn=true;save();refresh();go('rate');toast('Signed out and this phone is cleared. Shared ratings are safe in the account.')};
       if(sb)sb.auth.signOut().then(done,done);else done();break}
@@ -3152,8 +3186,8 @@ document.addEventListener('click',e=>{
     case 'renameme':askName();break;
     case 'copycode':{const c=myProfile&&myProfile.friend_code||'';try{navigator.clipboard.writeText(c).then(()=>toast('Copied '+c),()=>toast('Your code is '+c))}catch(_){toast('Your code is '+c)}break}
     case 'deleteshared':{
-      if(Date.now()-delArmed>4000){delArmed=Date.now();t.textContent='Tap again to delete';setTimeout(()=>{t.textContent='Delete my shared data'},4000);break}
-      delArmed=0;t.textContent='Delete my shared data';
+      if(Date.now()-delArmed>4000){delArmed=Date.now();t.textContent='Tap again';setTimeout(()=>{t.textContent='Delete'},4000);break}
+      delArmed=0;t.textContent='Delete';
       deleteShared(true).then(ok=>{if(!ok)return;state.myReviews.forEach(r=>{r.synced=true;r.serverId=null;r.photoPath=null});state.noSignIn=true;save();sb.auth.signOut();toast('Your shared data is deleted and you’re signed out. Your ratings stay on this phone only.')});
       break}
     case 'pickalt':{
@@ -3169,14 +3203,14 @@ document.addEventListener('click',e=>{
       else toast('Okay. Name it yourself, or tap Not food.');
       tp.cands=[];save();refresh();break}
     case 'wipe':{
-      if(Date.now()-wipeArmed>4000){wipeArmed=Date.now();t.textContent='Tap again to erase everything';setTimeout(()=>{t.textContent='Erase everything'},4000);break}
-      wipeArmed=0;t.textContent='Erase everything';
+      if(Date.now()-wipeArmed>4000){wipeArmed=Date.now();t.textContent='Tap again';setTimeout(()=>{t.textContent='Erase all'},4000);break}
+      wipeArmed=0;t.textContent='Erase all';
       deleteShared(false);
       state=fresh();state.tiersV2=true;state.cleanV1=true;state.noSignIn=!me;world=EMPTY_WORLD;photoClear();if(sb&&me)pullShared(true);
       save();refresh();go('rate');toast('Everything erased. Import your Timeline to start fresh.');break}
     case 'reset':{
-      if(Date.now()-resetArmed>4000){resetArmed=Date.now();t.textContent='Tap again to erase';setTimeout(()=>{t.textContent='Erase my ratings'},4000);break}
-      resetArmed=0;t.textContent='Erase my ratings';
+      if(Date.now()-resetArmed>4000){resetArmed=Date.now();t.textContent='Tap again';setTimeout(()=>{t.textContent='Erase'},4000);break}
+      resetArmed=0;t.textContent='Erase';
       deleteShared(false);
       Object.assign(state,{myReviews:[],tokens:1,sinceToken:0,hidden:[],names:{},undo:[],drafts:{},skipped:{},dismissed:[]});
       photoClear();
