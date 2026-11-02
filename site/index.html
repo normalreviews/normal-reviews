@@ -464,6 +464,18 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* toast */
 .toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--bg);font-weight:600;font-size:13.5px;padding:10px 14px;border-radius:12px;max-width:calc(100% - 32px);box-shadow:var(--shadow);opacity:0;transition:opacity .2s;pointer-events:none;text-align:center}
 .toast.on{opacity:1}
+.toast.high{bottom:auto;top:calc(70px + env(safe-area-inset-top,0px))}
+.toast.act{width:max-content;white-space:nowrap;display:flex;align-items:center;gap:16px;text-align:left}
+.toast.act.on{pointer-events:auto}
+.tundo{appearance:none;border:0;background:none;color:var(--bg);font:800 13.5px var(--f-body);text-decoration:underline;text-underline-offset:3px;padding:4px 2px;cursor:pointer}
+.plusbtn{appearance:none;flex:none;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--accent);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow)}
+.plusbtn svg{width:22px;height:22px}
+.qhead{align-items:flex-start;flex-wrap:nowrap}
+.plate{flex-basis:46%}
+.card .cbody > .ccrow:last-child,.card .cbody > .ccmt:last-child{margin-top:auto}
+.plate .mono{right:64px}
+.plate.compact .mono{right:64px}
+#menuBody a.mitem{text-decoration:none;color:inherit}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 /* phones: keep the whole card on screen */
@@ -505,7 +517,6 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   <header class="top gutter">
     <p class="brand"><svg viewBox="0 0 30 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M2 16c4 0 5-1.5 7-6s3.5-8 6-8 4 3.5 6 8 3 6 7 6"/></svg>Normal Reviews</p>
     <div class="hright">
-      <span class="tokens" id="tokens" title="Extraordinary ratings left"></span>
       <button class="gear" data-tab="logic" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
   </header>
@@ -514,23 +525,18 @@ label.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     <section class="view gutter" id="v-rate" aria-label="Rate your visits">
       <div class="qhead">
         <div>
-          <h1 class="h1">Your queue<span class="srcpill" id="srcpill"></span></h1>
+          <h1 class="h1">To rate</h1>
           <p id="qcount"></p>
           <button class="nnbtn" id="needNameBtn" data-cmd="needname" hidden></button>
         </div>
-        <div class="btns">
-          <button class="btn ghost" data-cmd="undo" id="undoBtn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
-          <label class="btn" for="file" role="button" tabindex="0">Import Timeline</label>
-          <button class="btn" data-cmd="addvisit">+ Add visit</button>
-        </div>
+        <button class="plusbtn" data-cmd="plus" aria-label="Add a visit, import or undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       </div>
       <div class="stack" id="stack"></div>
       <div class="acts" id="acts">
-        <button class="act t1" data-act="left" aria-label="OK (swipe left)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg><span class="lbl">OK</span></button>
-        <button class="act t2" data-act="down" aria-label="Good (swipe down)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Good</span></button>
-        <button class="act t4" data-act="up" id="superBtn" aria-label="Extraordinary (swipe up)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1L3.2 9.2l6.1-.8z"/></svg><span class="cnt" id="superCnt">1</span><span class="lbl">Extraordinary</span></button>
-        <button class="act t3" data-act="right" aria-label="Great (swipe right)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 4.6 13a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9a4.6 4.6 0 0 1 6.5 6.5z"/></svg><span class="lbl">Great</span></button>
+        <button class="act t1" data-act="left" aria-label="OK (swipe left)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg><span class="lbl">← OK</span></button>
+        <button class="act t2" data-act="down" aria-label="Good (swipe down)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">↓ Good</span></button>
+        <button class="act t3" data-act="right" aria-label="Great (swipe right)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 4.6 13a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9a4.6 4.6 0 0 1 6.5 6.5z"/></svg><span class="lbl">→ Great</span></button>
+        <button class="act t4" data-act="up" id="superBtn" aria-label="Extraordinary (swipe up)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1L3.2 9.2l6.1-.8z"/></svg><span class="cnt" id="superCnt">1</span><span class="lbl">↑ Extraordinary</span></button>
       </div>
     </section>
 
@@ -882,7 +888,7 @@ function meta(key){
   const name=state.names[lk]||state.names[key]||OWNN.get(key)||OWNN.get(lk)||OWNN.get(ck)||tp.name||COMM.get(lk)||COMM.get(key),gname=!name&&GNAME.get(lk);
   const coords=isFinite(tp.lat)?tp.lat.toFixed(4)+', '+tp.lng.toFixed(4):'';
   const src=tp.manual?'Added by you':tp.gps?'Found by your phone':'From your Timeline';
-  return {name:name||gname||(state.tplaces[lk]?'Unnamed stop':'Unnamed place'),sub:tp.addr?tp.addr.split(',').slice(0,2).join(','):gname?'Name from Google':name?src:(coords||src),hood:'',cuisine:tp.label||'Timeline stop',hue:hash(key)%360,tl:true,named:!!name,gname:!!gname,coords,tp,lat:tp.lat,lng:tp.lng};
+  return {name:name||gname||(state.tplaces[lk]?'Unnamed stop':'Unnamed place'),sub:tp.addr?tp.addr.split(',').slice(0,2).join(','):gname?'Name from Google':src,hood:'',cuisine:tp.label||'Timeline stop',hue:hash(key)%360,tl:true,named:!!name,gname:!!gname,coords,tp,lat:tp.lat,lng:tp.lng};
 }
 function mapsUrl(tp){
   if(!tp||!isFinite(tp.lat))return null;
@@ -964,7 +970,12 @@ const STAR='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><pat
 
 /* ---------- toast ---------- */
 let toastT=0;
-function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2400)}
+function toast(msg,undoable){
+  const t=$('#toast');t.textContent=msg;
+  if(undoable){const b=document.createElement('button');b.className='tundo';b.dataset.cmd='undo';b.textContent='Undo';t.append(b)}
+  t.classList.toggle('act',!!undoable);t.classList.toggle('high',!$('#v-rate').hidden);t.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on','act'),undoable?4500:2400);
+}
 
 /* ---------- photos (IndexedDB on this phone) ---------- */
 const PH={mem:new Map(),db:null};
@@ -996,6 +1007,11 @@ function cover(key){
   return any?photoUrls[any.photoPath]:null;
 }
 const ICON={
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+  undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   cmt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>',
   skip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6l7 6-7 6zM13 6l7 6-7 6z"/></svg>',
@@ -1059,11 +1075,8 @@ function foodArt(text){
 
 /* ---------- header ---------- */
 function renderHeader(){
-  const left=10-state.sinceToken;
-  $('#tokens').innerHTML=`${STAR}<b>${state.tokens}</b><span class="dim">· ${state.tokens>=3?'max held':left+' to next'}</span>`;
   $('#superCnt').textContent=state.tokens;
   $('#superBtn').setAttribute('aria-disabled',state.tokens<1?'true':'false');
-  $('#undoBtn').disabled=!state.undo.length;
 }
 
 /* ---------- deck ---------- */
@@ -1100,7 +1113,7 @@ function cardHTML(v){
     const url=mapsUrl(m.tp),k=esc(v.key);
     const cands=!m.named&&m.tp&&m.tp.cands;
     if(cands&&cands.length)extra+=`<div class="pick" data-nodrag><p class="fine">Were you at…</p><div class="btns">${cands.map((c,i)=>`<button class="btn" data-cmd="pick" data-key="${k}" data-i="${i}">${esc(c.n)} <small class="fine">${c.d} m</small></button>`).join('')}<button class="btn ghost" data-cmd="pick" data-key="${k}" data-i="-1">None of these</button></div></div>`;
-    extra+=`<div class="alts" data-nodrag><span class="fine">Wrong place?</span><button class="lnk" data-cmd="fixsearch" data-key="${k}">Search</button>${googleNamed(v.key)?'':`<button class="lnk" data-cmd="name" data-key="${k}">${m.named?'Rename':'Name it'}</button>`}<button class="lnk warn" data-cmd="hide" data-key="${k}">Not food</button>${url?`<a class="lnk" href="${esc(url)}" target="_blank" rel="noopener">Map ↗</a>`:''}</div>`;
+    extra+=`<div class="alts" data-nodrag>${m.named||cands&&cands.length?'':`<button class="lnk" data-cmd="name" data-key="${k}">Name it</button>`}<button class="lnk" data-cmd="wrong" data-visit="${esc(v.id)}">Wrong place?</button></div>`;
   }
   const dr=state.drafts[v.id]||{}, dphoto=dr.photo&&PH.mem.get(dr.photo), photo=dphoto||cover(v.key);
   const cam=`<button class="cbtn" data-cmd="cphoto" data-visit="${esc(v.id)}" aria-label="${dphoto?'Change photo':'Add a photo'}">${ICON.cam}${dphoto?'<span>Photo added</span>':''}</button>`;
@@ -1122,20 +1135,25 @@ function whoRated(fr,others){const a=[];if(fr)a.push(fr+(fr===1?' friend':' frie
 function renderDeck(){
   const q=deckVisits(), P=state.params, stack=$('#stack');
   const hasTimeline=state.visits.some(v=>v.source==='timeline');
-  $('#srcpill').textContent=hasTimeline?'Timeline':'';
-  {const nn=needNameList().length,b=$('#needNameBtn');b.hidden=!nn;b.textContent=nn?`${nn} place${nn===1?'':'s'} you rated need${nn===1?'s':''} a name for everyone →`:''}
-  $('#qcount').textContent=q.length?`${q.length} visit${q.length>1?'s':''} to rate · hold a card for more`:hasTimeline?`Nothing left from the last ${P.queueDays} days`:'Import your Google Timeline to start';
+  {const nn=needNameList().length,b=$('#needNameBtn');b.hidden=!nn;b.textContent=nn?`Name ${nn} place${nn===1?'':'s'} for everyone →`:''}
+  const auto=NATIVE&&GPS.on;
+  $('#qcount').textContent=q.length?`${q.length} visit${q.length>1?'s':''} waiting`:auto||hasTimeline?'All caught up':'Nothing to rate yet';
   const leaving=[...stack.querySelectorAll('.card.leaving')];
   stack.innerHTML='';
   document.querySelectorAll('#acts .act').forEach(b=>b.disabled=!q.length);
   if(!q.length){
-    stack.innerHTML=hasTimeline
-      ?`<div class="empty"><h2 class="h2">All caught up</h2><p>Export a fresh Timeline in a week or two and import it again. Only new visits are added.</p><div class="btns"><label class="btn primary" for="file" role="button" tabindex="0">Import Timeline</label><button class="btn" data-cmd="addvisit">+ Add a visit</button></div></div>`
+    const imp=`<button class="btn${NATIVE?'':' primary'}" data-cmd="import">Import Google Timeline</button>`;
+    stack.innerHTML=auto
+      ?`<div class="empty"><h2 class="h2">All caught up</h2><p>When you eat somewhere for 10+ minutes, it shows up here as a card.</p><div class="btns"><button class="btn" data-cmd="addvisit">+ Add a visit</button></div></div>`
+      :NATIVE
+      ?`<div class="empty"><h2 class="h2">Find your restaurant visits</h2><p>Turn on visit detection and the places you eat show up here on their own. Every other stop is forgotten right away.</p><div class="btns"><button class="btn primary" data-cmd="gps">Turn on visit detection</button></div><div class="btns">${imp}<button class="btn" data-cmd="addvisit">+ Add a visit</button></div></div>`
+      :hasTimeline
+      ?`<div class="empty"><h2 class="h2">All caught up</h2><p>Export a fresh Timeline in a week or two and import it again. Only new visits are added.</p><div class="btns">${imp}<button class="btn" data-cmd="addvisit">+ Add a visit</button></div></div>`
       :`<div class="empty"><h2 class="h2">Start with your Timeline</h2>
         <ol><li><b>Android:</b> Settings → Location → Location services → Timeline → Export Timeline data</li>
         <li><b>iPhone:</b> Google Maps → profile picture → Settings → Personal content → Export Timeline data</li>
         <li>Tap Import and pick the file. Your last ${P.queueDays} days of stops become cards.</li></ol>
-        <div class="btns"><label class="btn primary" for="file" role="button" tabindex="0">Import Timeline</label></div>
+        <div class="btns">${imp}</div>
         <p class="fine">The file stays on this phone.</p></div>`;
     leaving.forEach(x=>stack.appendChild(x));
     return;
@@ -1221,13 +1239,10 @@ function openMenu(vid,view){
   }else{
     const item=(cmd,ic,title,sub,cls)=>`<button class="mitem${cls?' '+cls:''}" data-cmd="${cmd}"><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span></button>`;
     html=head+`<div class="mlist">
-      ${item('mphoto',ICON.cam,dr.photo?'Replace photo':'Upload photo','Becomes this place’s cover image')}
       ${dr.photo?item('mrmphoto',ICON.trash,'Remove photo','Take the photo off this visit'):''}
-      ${item('mcomment',ICON.cmt,dr.comment?'Edit comment':'Add comment','Up to 140 characters, shown to everyone')}
       ${item('mproblem',ICON.warn,'There was a problem','Rate it 0 and flag what went wrong','warn')}
       ${item('mskip',ICON.skip,'Skip for now','Move to the back of your deck')}
       ${item('mnomeal',ICON.nope,'I didn’t visit','Remove this visit without rating','warn')}
-      ${m.tl?item('mnotfood',ICON.trash,'Not food','Hide this place for good','warn'):''}
     </div><button class="btn ghost" data-cmd="mclose" style="align-self:center">Cancel</button>`;
   }
   $('#menuBody').innerHTML=html;
@@ -1235,6 +1250,31 @@ function openMenu(vid,view){
   if(sh.hidden){lastFocus=document.activeElement;sh.hidden=false}
   const f=view==='comment'?$('#cmtInput'):sh.querySelector(view==='problem'?'.rchip':'.mitem');
   if(f){f.focus({preventScroll:true});if(view==='comment')f.setSelectionRange(f.value.length,f.value.length)}
+}
+/* "Wrong place?" on a card: search, rename, not food, open the map */
+function openWrong(vid){
+  const v=state.visits.find(x=>x.id===vid);if(!v)return;
+  const m=meta(v.key),k=esc(v.key),url=mapsUrl(m.tp);menuVisit=null;
+  const item=(attr,ic,title,sub,cls)=>`<button class="mitem${cls?' '+cls:''}" ${attr}><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span></button>`;
+  $('#menuBody').innerHTML=`<div class="grab"></div><div><p class="eyebrow">${esc(when(v.start))}</p><h2 class="h2">Wrong place?</h2></div><div class="mlist">
+    ${item(`data-cmd="fixsearch" data-key="${k}"`,ICON.search,'Search for the right restaurant','Pick it from the map of nearby places')}
+    ${m.named&&!googleNamed(v.key)?item(`data-cmd="wpname" data-key="${k}"`,ICON.cmt,'Rename it','Type the name everyone sees'):''}
+    ${url?`<a class="mitem" href="${esc(url)}" target="_blank" rel="noopener"><span class="ic">${ICON.pin}</span><span><b>Check on Google Maps ↗</b><small>See where this stop was</small></span></a>`:''}
+    ${item(`data-cmd="hide" data-key="${k}"`,ICON.trash,'Not a restaurant','Hide this place for good','warn')}
+  </div><button class="btn ghost" data-cmd="avclose" style="align-self:center">Cancel</button>`;
+  const sh=$('#menu');if(sh.hidden){lastFocus=document.activeElement;sh.hidden=false}
+}
+/* the + button on the Rate tab */
+function openPlus(){
+  menuVisit=null;
+  const item=(cmd,ic,title,sub)=>`<button class="mitem" data-cmd="${cmd}"><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span></button>`;
+  const last=state.undo[state.undo.length-1];
+  $('#menuBody').innerHTML=`<div class="grab"></div><h2 class="h2">Add visits</h2><div class="mlist">
+    ${item('addvisit',ICON.plus,'Add a visit','Pick a restaurant you ate at')}
+    ${item('import',ICON.up,'Import Google Timeline','Your stops from the last '+state.params.queueDays+' days become cards')}
+    ${last?item('undo',ICON.undo,'Undo last','Bring back the last card you '+({rate:'rated',skip:'skipped',dismiss:'removed',hide:'hid'}[last.type]||'changed')):''}
+  </div><button class="btn ghost" data-cmd="avclose" style="align-self:center">Cancel</button>`;
+  const sh=$('#menu');if(sh.hidden){lastFocus=document.activeElement;sh.hidden=false}
 }
 function closeMenu(){$('#menu').hidden=true;menuVisit=null;if(lastFocus&&lastFocus.focus&&document.contains(lastFocus))lastFocus.focus({preventScroll:true})}
 function menuCmd(cmd){
@@ -1258,9 +1298,9 @@ function menuCmd(cmd){
     case 'mskip':{
       const n=deckVisits().length;
       state.skipped[vid]=Date.now();pushUndo({type:'skip',id:vid});save();closeMenu();refresh();
-      toast(n>1?'Skipped. It’s at the back of your deck.':'Skipped. It’s the only card left, so it stays on top.');break}
-    case 'mnomeal':state.dismissed.push(vid);pushUndo({type:'dismiss',id:vid});save();closeMenu();refresh();toast('Removed. Tap Undo to bring it back.');break;
-    case 'mnotfood':if(!state.hidden.includes(v.key))state.hidden.push(v.key);pushUndo({type:'hide',key:v.key});save();closeMenu();refresh();toast('Hidden. It won’t come back.');break;
+      toast(n>1?'Skipped for now':'Skipped. It’s the only card left, so it stays on top.',n>1);break}
+    case 'mnomeal':state.dismissed.push(vid);pushUndo({type:'dismiss',id:vid});save();closeMenu();refresh();toast('Removed',true);break;
+    case 'mnotfood':if(!state.hidden.includes(v.key))state.hidden.push(v.key);pushUndo({type:'hide',key:v.key});save();closeMenu();refresh();toast('Hidden for good',true);break;
   }
 }
 function noSuper(el){
@@ -1346,7 +1386,7 @@ function rate(v,tier,reasons){
   pushUndo({type:'rate',id:rec.id});
   save();renderHeader();renderDeck();refreshLater();
   if(sb&&me)pushRating(rec).then(ok=>{if(ok)save()});
-  if(earned)toast('You earned another Extraordinary.');else if(tier===0)toast(`Problem reported · ${meta(v.key).name}`);
+  if(earned)toast('You earned another Extraordinary.',true);else if(tier===0)toast(`Problem reported · ${meta(v.key).name}`,true);else toast(`Rated ${TIERS[tier].label}`,true);
   if(needsName(v.key)&&!(state.nameAsked||{})[v.key]){(state.nameAsked=state.nameAsked||{})[v.key]=Date.now();save();setTimeout(()=>askNames([v.key]),350)}
 }
 function deleteRating(id){
@@ -3024,11 +3064,14 @@ document.addEventListener('click',e=>{
   if(t.dataset.filter){rankFilter=t.dataset.filter;return renderRank()}
   if(t.dataset.open)return openDetail(t.dataset.open);
   switch(t.dataset.cmd){
-    case 'import':openPicker($('#file'));break;
-    case 'undo':undo();break;
+    case 'import':closeMenu();openPicker($('#file'));break;
+    case 'undo':closeMenu();undo();break;
+    case 'plus':openPlus();break;
+    case 'wrong':openWrong(t.dataset.visit);break;
+    case 'wpname':{closeMenu();const host=$('#stack .card:not(.behind) .cbody');if(host)startNaming({dataset:{key:t.dataset.key},closest:()=>host});break}
     case 'close':closeDetail();break;
     case 'name':startNaming(t);break;
-    case 'hide':{const k=t.dataset.key;if(!state.hidden.includes(k))state.hidden.push(k);pushUndo({type:'hide',key:k});save();refresh();toast('Hidden. It won’t come back.');break}
+    case 'hide':{const k=t.dataset.key;if(!state.hidden.includes(k))state.hidden.push(k);pushUndo({type:'hide',key:k});closeMenu();save();refresh();toast('Hidden. It won’t come back.',true);break}
     case 'demo':{
       state.demo=!state.demo;
       world=state.demo?genWorld(state.seed):EMPTY_WORLD;
@@ -3069,12 +3112,12 @@ document.addEventListener('click',e=>{
     case 'vdgo':vdAskAll().then(ok=>vdStart().then(on=>{if(on){renderGps();toast(ok?'Visit detection is on. Eat somewhere for 10+ minutes and it shows up here.':'Visit detection is on, but some permissions are missing. See Settings.')}}));break;
     case 'gpsperms':VD&&VD.openSettings();break;
     case 'gpsbatt':VD&&VD.openSettings();break;
-    case 'addvisit':openAdd();break;
+    case 'addvisit':closeMenu();openAdd();break;
     case 'avclose':closeMenu();break;
     case 'avnear':avNear(t);break;
     case 'avpick':{const p=avList[+t.dataset.i];if(p)avAdd(p);break}
     case 'avcustom':{const n=$('#avq').value.trim().slice(0,80);if(n)avAdd(avRef?{n,lat:avRef.lat,lng:avRef.lng}:{n});break}
-    case 'notnow':state.noSignIn=true;save();closeAcct();toast('You can sign in anytime from the Friends tab.');break;
+    case 'notnow':state.noSignIn=true;save();closeAcct();toast('You can sign in anytime in Settings.');break;
     case 'signout':if(sb){state.noSignIn=true;save();sb.auth.signOut().then(()=>toast('Signed out. Your visits and ratings stay on this phone.'))}break;
     case 'signoutclear':{
       if(Date.now()-clearArmed>4000){clearArmed=Date.now();t.textContent='Tap again to sign out and clear';setTimeout(()=>{t.textContent='Sign out and clear this phone'},4000);break}
