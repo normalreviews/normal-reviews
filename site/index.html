@@ -2556,9 +2556,11 @@ async function importFiles(files){
 
 /* ---------- navigation ---------- */
 const VIEWS=['rate','rankings','map','friends','logic'];
-let current='rate';
-function go(t){
-  if(!VIEWS.includes(t))t='rate';current=t;
+let current='rate',tabHist=[];
+function go(t,fromBack){
+  if(!VIEWS.includes(t))t='rate';
+  if(!fromBack&&t!==current){tabHist.push(current);if(tabHist.length>20)tabHist.shift()}
+  current=t;
   VIEWS.forEach(v=>{$('#v-'+v).hidden=v!==t});
   document.querySelectorAll('[data-tab]').forEach(b=>{if(b.dataset.tab===t)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   $('#main').scrollTop=0;
@@ -3256,6 +3258,18 @@ $('#photoFile').addEventListener('change',async e=>{
   }catch(err){toast('That photo couldn’t be read. Try a JPEG or PNG.')}
 });
 let rsT=0;addEventListener('resize',()=>{clearTimeout(rsT);rsT=setTimeout(()=>renderMap(),120)});
+/* Android back button: close whatever is popped up; with nothing popped up, the tab you were on before;
+   with nothing left, tuck the app away (it stays as it was, like Home) instead of closing it */
+function nrBack(){
+  if(!$('#acct').hidden){closeAcct();return true}
+  if(!$('#menu').hidden){closeMenu();return true}
+  if(!$('#sheet').hidden){closeDetail();return true}
+  if(!$('#fMore').hidden&&current==='rankings'){$('#fMore').hidden=true;$('#fMoreBtn').setAttribute('aria-expanded','false');return true}
+  while(tabHist.length){const t=tabHist.pop();if(t!==current){go(t,true);return true}}
+  return false;
+}
+{const APP=NATIVE?capPlugin('App'):null;
+  if(APP&&typeof APP.addListener==='function')try{APP.addListener('backButton',()=>{if(nrBack())return;try{(APP.minimizeApp||APP.exitApp).call(APP)}catch(e){}})}catch(e){}}
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&!$('#acct').hidden)return closeAcct();
   if(e.key==='Escape'&&!$('#menu').hidden)return closeMenu();
