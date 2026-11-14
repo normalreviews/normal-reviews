@@ -19,8 +19,9 @@ jobs:
           URL=$(grep -o 'https://[a-z0-9]*\.supabase\.co' site/config.js | head -1)
           KEY=$(grep -o 'sb_publishable_[A-Za-z0-9_-]*' site/config.js | head -1)
           test -n "$URL" && test -n "$KEY" || { echo "Couldn't find the Supabase address or key in site/config.js"; exit 1; }
-          for t in profiles ratings invites; do
-            code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' "$URL/rest/v1/$t?select=*&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
-            echo "$t: HTTP $code"
-            case "$code" in 2*) ;; *) echo "::error::Supabase answered $code for $t (paused or down?)"; exit 1;; esac
+          for i in 1 2 3; do
+            code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' "$URL/rest/v1/profiles?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+            echo "read $i: HTTP $code"
+            case "$code" in 2*) ;; *) echo "::error::Supabase answered $code (paused or down?)"; exit 1;; esac
+            sleep 2
           done
